@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
          <modelVersion>4.0.0</modelVersion>
     <groupId>ru.ifmo.ctddev.khovanskiy.compilers</groupId>
-    <artifactId>common</artifactId>
+    <artifactId>compiler</artifactId>
     <version>1.0.0</version>
    
     <packaging>jar</packaging>
@@ -16,10 +16,15 @@
 
         <slf4j.version>1.7.21</slf4j.version>
         <logback.version>1.1.7</logback.version>
-        <antlr4.version>4.6</antlr4.version>
     </properties>
 
     <dependencies>
+    	<dependency>
+            <groupId>ru.ifmo.ctddev.khovanskiy.compilers</groupId>
+            <artifactId>common</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+        
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -49,36 +54,10 @@
             <artifactId>commons-collections4</artifactId>
             <version>4.1</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.antlr</groupId>
-            <artifactId>antlr4-runtime</artifactId>
-            <version>${antlr4.version}</version>
-        </dependency>
     </dependencies>
 
     <build>
-    	<finalName>${project.artifactId}-${project.version}</finalName>
-        <plugins>
-            <plugin>
-                <groupId>org.antlr</groupId>
-                <artifactId>antlr4-maven-plugin</artifactId>
-                <version>${antlr4.version}</version>
-                <executions>
-                    <execution>
-                        <id>antlr</id>
-                        <goals>
-                            <goal>antlr4</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <outputDirectory>${project.build.directory}/generated-sources/ru/ifmo/ctddev/khovanskiy/compilers/parser</outputDirectory>
-                    <listener>true</listener>
-                    <visitor>true</visitor>
-                </configuration>
-            </plugin>
-        </plugins>
+    	<finalName>${project.artifactId}</finalName>
     </build>
 
 </project>
