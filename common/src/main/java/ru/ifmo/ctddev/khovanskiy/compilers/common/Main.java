@@ -3,12 +3,12 @@ package ru.ifmo.ctddev.khovanskiy.compilers.common;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.ParserRuleContext;
-import org.antlr.v4.runtime.tree.*;
-import ru.ifmo.ctddev.khovanskiy.compilers.parser.*;
+import org.antlr.v4.runtime.tree.ParseTree;
+import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
+import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageLexer;
+import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageParser;
 
 import java.io.IOException;
-import java.io.StringBufferInputStream;
 import java.io.StringReader;
 
 /**

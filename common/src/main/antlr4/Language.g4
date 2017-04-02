@@ -9,8 +9,7 @@ compilationUnit
     ;
 
 compoundStatement
-    :   singleStatement?
-    |   compoundStatement singleStatement
+    :   singleStatement singleStatement*
     ;
 
 declaration
@@ -26,8 +25,7 @@ variableDefinition
     ;
 
 argumentDefinitionList
-    :   variableDefinition
-    |   (variableDefinition ',')* variableDefinition
+    :   variableDefinition (',' variableDefinition)*
     ;
 
 singleStatement
@@ -38,17 +36,12 @@ singleStatement
     |   iterationStatement ';'?
     ;
 
-statement
-    :   singleStatement?
-    |   compoundStatement
-    ;
-
 expressionStatement
     :   expression
     ;
 
 selectionStatement
-    :   'if' expression 'then' statement ('elif' expression 'then' statement)* ('else' statement)?
+    :   'if' expression 'then' compoundStatement ('elif' expression 'then' compoundStatement)* ('else' compoundStatement)? 'fi' #if
     ;
 
 jumpStatement
@@ -60,129 +53,72 @@ jumpStatement
 
 iterationStatement
     :   'while' expression 'do' compoundStatement 'od'                          #while
-    |   'repeat' statement 'until' expression                                   #repeat
-    |   'for' expression? ',' expression? ',' expression? 'do' compoundStatement 'od'   #for
+    |   'repeat' compoundStatement 'until' expression                                   #repeat
+    |   'for' init=expression? ',' condition=expression? ',' loop=expression? 'do' compoundStatement 'od'   #for
     ;
 
 //----------------------------------------------------------------------------------------------------------------------
 // Expression
 //----------------------------------------------------------------------------------------------------------------------
-primaryExpression
-    :   Identifier
-    |   constant
-    ;
-
 functionCall
-    :   Identifier '(' argumentExpressionList? ')'
+    :   name=Identifier '(' expression? (',' expression)* ')'
     ;
 
 arrayAccess
-    : Identifier ('[' expression ']')+
+    :   name=Identifier ('[' expression ']')+
     ;
 
-postfixExpression
-    :   primaryExpression
-    |   arrayAccess
-    |   functionCall
-    |   postfixExpression '++'
-    |   postfixExpression '--'
+variableAccess
+    :   Identifier
     ;
 
-argumentExpressionList
-    :   assignmentExpression
-    |   (assignmentExpression ',')* assignmentExpression
+memoryAccess
+	:	variableAccess
+	|	arrayAccess
+	;
+
+assignment
+    :   memoryAccess assignmentOperator=':=' expression
     ;
 
-unaryExpression
-    :   postfixExpression
-    |   '++' unaryExpression
-    |   '--' unaryExpression
-    |   unaryOperator castExpression
-    ;
-
-unaryOperator
-    :   '&' | '*' | '+' | '-' | '~' | '!'
-    ;
-
-castExpression
-    :   unaryExpression
-    ;
-
-multiplicativeExpression
-    :   castExpression
-    |   multiplicativeExpression '*' castExpression
-    |   multiplicativeExpression '/' castExpression
-    |   multiplicativeExpression '%' castExpression
-    ;
-
-additiveExpression
-    :   multiplicativeExpression
-    |   additiveExpression '+' multiplicativeExpression
-    |   additiveExpression '-' multiplicativeExpression
-    ;
-
-shiftExpression
-    :   additiveExpression
-    |   shiftExpression '<<' additiveExpression
-    |   shiftExpression '>>' additiveExpression
-    ;
-
-relationalExpression
-    :   shiftExpression
-    |   relationalExpression '<' shiftExpression
-    |   relationalExpression '>' shiftExpression
-    |   relationalExpression '<=' shiftExpression
-    |   relationalExpression '>=' shiftExpression
-    ;
-
-equalityExpression
-    :   relationalExpression
-    |   equalityExpression '==' relationalExpression
-    |   equalityExpression '!=' relationalExpression
-    ;
-
-andExpression
-    :   equalityExpression
-    |   andExpression '&' equalityExpression
-    ;
-
-exclusiveOrExpression
-    :   andExpression
-    |   exclusiveOrExpression '^' andExpression
-    ;
-
-inclusiveOrExpression
-    :   exclusiveOrExpression
-    |   inclusiveOrExpression '|' exclusiveOrExpression
-    ;
-
-logicalAndExpression
-    :   inclusiveOrExpression
-    |   logicalAndExpression '&&' inclusiveOrExpression
-    ;
-
-logicalOrExpression
-    :   logicalAndExpression
-    |   logicalOrExpression '||' logicalAndExpression
-    ;
-
-conditionalExpression
-    :   logicalOrExpression ('?' expression ':' conditionalExpression)?
-    ;
-
-assignmentExpression
-    :   conditionalExpression
-    |   unaryExpression assignmentOperator assignmentExpression
-    ;
-
-assignmentOperator
-    :   ':='
+skip
+    :   'skip'
     ;
 
 expression
-    :   assignmentExpression
-    |   (assignmentExpression ',')* assignmentExpression
+    :   skip
+    |   functionCall
+    |   memoryAccess
+    |   '(' expression ')'
+    |   literal
+    |   '[' constantList? ']'
+//    |   memoryAccess postfixOperator=('++' | '--')
+//    |   prefixOperator=('++' | '--') memoryAccess
+    |   unaryOperator=('+' | '-' | '~' | '!') expression
+    |   left=expression binaryOperator=('*' | '/' | '%') right=expression
+    |   left=expression binaryOperator=('+' | '-') right=expression
+    |   left=expression binaryOperator=('>>' | '<<') right=expression
+    |   left=expression binaryOperator=('>' | '<' | '<=' | '>=') right=expression
+    |   left=expression binaryOperator=('==' | '!=') right=expression
+    |   left=expression binaryOperator='&' right=expression
+    |   left=expression binaryOperator='^' right=expression
+    |   left=expression binaryOperator='|' right=expression
+    |   left=expression binaryOperator='&&' right=expression
+    |   left=expression binaryOperator='||' right=expression
+    |   assignment
     ;
+
+constantList
+    :   literal (',' literal)*
+    ;
+
+//----------------------------------------------------------------------------------------------------------------------
+literal
+	:	IntegerLiteral
+	|   CharacterLiteral
+	|	StringLiteral
+	|	NullLiteral
+	;
 
 //----------------------------------------------------------------------------------------------------------------------
 Identifier
@@ -206,55 +142,38 @@ Digit
     ;
 
 //----------------------------------------------------------------------------------------------------------------------
-StringLiteral
-    :   EncodingPrefix? '"' SCharSequence? '"'
-    ;
-fragment
-EncodingPrefix
-    :   'u8'
-    |   'u'
-    |   'U'
-    |   'L'
-    ;
-fragment
-SCharSequence
-    :   SChar+
-    ;
-fragment
-SChar
-    :   ~["\\\r\n]
-    |   EscapeSequence
-    |   '\\\n'   // Added line
-    |   '\\\r\n' // Added line
-    ;
+CharacterLiteral
+	:	'\'' SingleCharacter '\''
+	;
 
 fragment
-EscapeSequence
-    :   SimpleEscapeSequence
-    ;
-
-fragment
-SimpleEscapeSequence
-    :   '\\' ['"?abfnrtv\\]
-    ;
+SingleCharacter
+	:	~['\\]
+	;
 
 //----------------------------------------------------------------------------------------------------------------------
-constant
-    :   IntegerConstant
-    |   arrayConstant
+StringLiteral
+	:	'"' StringCharacters? '"'
+	;
+
+fragment
+StringCharacters
+	:	StringCharacter+
+	;
+
+fragment
+StringCharacter
+	:	~["\\]
+	;
+
+//----------------------------------------------------------------------------------------------------------------------
+NullLiteral
+    :   '{}'
+    |   'null'
     ;
 
-IntegerConstant
+IntegerLiteral
     :   Digit+
-    ;
-
-arrayConstant
-    :   '[' constantList? ']'
-    ;
-
-constantList
-    :   constant
-    |   (constant ',')* constant
     ;
 
 //----------------------------------------------------------------------------------------------------------------------
