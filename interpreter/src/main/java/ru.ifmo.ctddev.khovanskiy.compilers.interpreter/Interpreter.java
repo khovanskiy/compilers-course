@@ -30,7 +30,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
     }
 
     public static void main(String[] args) throws IOException {
-        String number = "test015";
+        String number = "test022";
         FileReader source = new FileReader(new File("compiler-tests/core/" + number + ".expr"));
 
         //StringReader source = new StringReader("if 11 > 5 then write(1) elif 2 > 5 then write(2) fi");
@@ -99,6 +99,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
         do {
             interpretCompoundStatement(whileStatement.getCompoundStatement());
             c = interpretExpression(whileStatement.getCondition());
+            //log.info("while condition " + c);
         } while (!c.equals(0));
     }
 
@@ -156,9 +157,9 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
                 case "|":
                     return (Integer) lo | (Integer) ro;
                 case "&&":
-                    return Objects.equals(lo, 1) && Objects.equals(ro, 1);
+                    return Objects.equals(lo, 1) && Objects.equals(ro, 1) ? 1 : 0;
                 case "||":
-                    return Objects.equals(lo, 1) || Objects.equals(ro, 1);
+                    return Objects.equals(lo, 1) || Objects.equals(ro, 1) ? 1 : 0;
                 case ">":
                     return (Integer) lo > (Integer) ro ? 1 : 0;
                 case "<":
@@ -182,13 +183,26 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
                         throw new RuntimeException();
                     }
                     return reader.nextInt();
-                case "write":
+                case "write": {
                     if (functionCall.getArguments().size() != 1) {
                         throw new RuntimeException();
                     }
-                    Object value  = interpretExpression(functionCall.getArguments().get(0));
+                    Object value = interpretExpression(functionCall.getArguments().get(0));
                     System.out.println(value);
                     return 0;
+                }
+                case "sleep": {
+                    if (functionCall.getArguments().size() != 1) {
+                        throw new RuntimeException();
+                    }
+                    Object value = interpretExpression(functionCall.getArguments().get(0));
+                    try {
+                        Thread.sleep((Integer) value);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return 0;
+                }
             }
             throw new IllegalArgumentException();
         }
@@ -220,7 +234,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
         if (assignmentExpression.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             AST.VariableAccessExpression variableAccess = (AST.VariableAccessExpression) assignmentExpression.getMemoryAccess();
             Object value = interpretExpression(assignmentExpression.getExpression());
-            log.info(variableAccess.getName() + ":=" + value);
+            //log.info(variableAccess.getName() + ":=" + value);
             memory.put(variableAccess.getName(), value);
             return value;
         }
