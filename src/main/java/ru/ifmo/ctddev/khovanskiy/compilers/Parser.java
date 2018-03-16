@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.interpreter;
+package ru.ifmo.ctddev.khovanskiy.compilers;
 
 import lombok.extern.slf4j.Slf4j;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
@@ -99,7 +99,7 @@ public class Parser extends LanguageBaseVisitor<AST> {
             AST.Expression left = visitExpression(ctx.left);
             AST.Expression right = visitExpression(ctx.right);
             String operator = ctx.binaryOperator.getText();
-            return new AST.BinaryExpression(left, right, operator);
+            return new AST.BinaryExpression(operator, left, right);
         }
         if (ctx.unaryOperator != null) {
             String operator = ctx.unaryOperator.getText();
@@ -134,11 +134,11 @@ public class Parser extends LanguageBaseVisitor<AST> {
             Integer value = Integer.parseInt(ctx.IntegerLiteral().getSymbol().getText());
             return new AST.IntegerLiteral(value);
         }
-        if (ctx.CharacterLiteral()!= null) {
+        if (ctx.CharacterLiteral() != null) {
             Character value = ctx.CharacterLiteral().getSymbol().getText().charAt(1);
             return new AST.CharacterLiteral(value);
         }
-        if (ctx.StringLiteral()!= null) {
+        if (ctx.StringLiteral() != null) {
             String value = ctx.StringLiteral().getSymbol().getText();
             value = value.substring(1, value.length() - 1);
             return new AST.StringLiteral(value);

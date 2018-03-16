@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
+import ru.ifmo.ctddev.khovanskiy.compilers.AST;
+import ru.ifmo.ctddev.khovanskiy.compilers.Parser;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageLexer;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageParser;
@@ -19,10 +21,10 @@ import java.util.Scanner;
  */
 @Slf4j
 public class Interpreter extends LanguageBaseVisitor<ParseTree> {
-    private Map<String, Object> memory = new HashMap<>();
     //private Map<String, >
     private final Scanner reader;
     private final PrintWriter writer;
+    private Map<String, Object> memory = new HashMap<>();
 
     public Interpreter(FileReader reader, Writer writer) {
         this.reader = new Scanner(reader);

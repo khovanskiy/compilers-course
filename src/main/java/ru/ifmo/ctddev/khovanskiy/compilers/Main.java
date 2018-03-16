@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.common;
+package ru.ifmo.ctddev.khovanskiy.compilers;
 
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.ANTLRInputStream;
@@ -17,7 +17,7 @@ import java.io.StringReader;
 @Slf4j
 public class Main {
     public static void main(String[] args) throws IOException {
-        ANTLRInputStream input = new ANTLRInputStream(new StringReader("int x = 5;"));
+        ANTLRInputStream input = new ANTLRInputStream(new StringReader("x := 5;"));
         LanguageLexer lexer = new LanguageLexer(input);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         LanguageParser parser = new LanguageParser(tokenStream);

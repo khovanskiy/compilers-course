@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.interpreter;
+package ru.ifmo.ctddev.khovanskiy.compilers;
 
 import lombok.Getter;
 import lombok.ToString;
@@ -122,14 +122,14 @@ public class AST {
     @Getter
     @ToString
     public static class BinaryExpression extends Expression {
-        private final AST.Expression left;
         private final String operator;
+        private final AST.Expression left;
         private final AST.Expression right;
 
-        public BinaryExpression(AST.Expression left, AST.Expression right, String operator) {
+        public BinaryExpression(String operator, Expression left, Expression right) {
+            this.operator = operator;
             this.left = left;
             this.right = right;
-            this.operator = operator;
         }
     }
 
