@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
-import ru.ifmo.ctddev.khovanskiy.compilers.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.Parser;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageLexer;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageParser;
@@ -80,7 +80,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
 
     public void interpretIfStatement(AST.IfStatement ifStatement) {
         Object c;
-        for (int i = 0; i < ifStatement.getCompoundStatements().size(); ++i) {
+        /*for (int i = 0; i < ifStatement.getCompoundStatements().size(); ++i) {
             if (ifStatement.getConditions().size() <= i) {
                 interpretCompoundStatement(ifStatement.getCompoundStatements().get(i));
                 break;
@@ -90,7 +90,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
                 interpretCompoundStatement(ifStatement.getCompoundStatements().get(i));
                 break;
             }
-        }
+        }*/
     }
 
     public void interpretWhileStatement(AST.WhileStatement whileStatement) {
@@ -114,14 +114,14 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
     }
 
     public void interpretForStatement(AST.ForStatement forStatement) {
-        interpretExpression(forStatement.getInit());
+        //interpretExpression(forStatement.getInit());
         Object c = interpretExpression(forStatement.getCondition());
         if (c.equals(0)) {
             return;
         }
         do {
             interpretCompoundStatement(forStatement.getCompoundStatement());
-            interpretExpression(forStatement.getLoop());
+            //interpretExpression(forStatement.getLoop());
             c = interpretExpression(forStatement.getCondition());
         } while (!c.equals(0));
     }
@@ -131,9 +131,6 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
     }
 
     public Object interpretExpression(AST.Expression expression) {
-        if (expression instanceof AST.Skip) {
-            return 0;
-        }
         if (expression instanceof AST.BinaryExpression) {
             AST.BinaryExpression binaryExpression = (AST.BinaryExpression) expression;
             Object lo = interpretExpression(binaryExpression.getLeft());
@@ -216,10 +213,10 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
             AST.MemoryAccessExpression memoryAccessExpression = (AST.MemoryAccessExpression) expression;
             return interpretMemoryAccess(memoryAccessExpression);
         }
-        if (expression instanceof AST.AssignmentExpression) {
+        /*if (expression instanceof AST.AssignmentExpression) {
             AST.AssignmentExpression assignmentExpression = (AST.AssignmentExpression) expression;
             return interpretAssignment(assignmentExpression);
-        }
+        }*/
         throw new IllegalArgumentException();
     }
 
@@ -232,7 +229,7 @@ public class Interpreter extends LanguageBaseVisitor<ParseTree> {
     }
 
 
-    public Object interpretAssignment(AST.AssignmentExpression assignmentExpression) {
+    public Object interpretAssignment(AST.AssignmentStatement assignmentExpression) {
         if (assignmentExpression.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             AST.VariableAccessExpression variableAccess = (AST.VariableAccessExpression) assignmentExpression.getMemoryAccess();
             Object value = interpretExpression(assignmentExpression.getExpression());

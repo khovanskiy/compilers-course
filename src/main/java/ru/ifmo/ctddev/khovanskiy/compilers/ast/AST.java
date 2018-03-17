@@ -1,8 +1,9 @@
-package ru.ifmo.ctddev.khovanskiy.compilers;
+package ru.ifmo.ctddev.khovanskiy.compilers.ast;
 
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -27,7 +28,7 @@ public class AST {
         private final List<SingleStatement> statements;
 
         public CompoundStatement(List<SingleStatement> statements) {
-            this.statements = statements;
+            this.statements = statements == null ? Collections.emptyList() : statements;
         }
     }
 
@@ -36,17 +37,51 @@ public class AST {
     public static class SingleStatement extends AST {
     }
 
-    public static abstract class Expression extends AST {
+    @Getter
+    @ToString
+    public static abstract class Declaration extends SingleStatement {
 
     }
 
     @Getter
     @ToString
-    public static class Skip extends Expression {
+    public static class FunctionDefinition extends Declaration {
+        private final String name;
+        private final List<VariableDefinition> variables;
+        private final CompoundStatement compoundStatement;
 
+        public FunctionDefinition(final String name,
+                                  final List<VariableDefinition> variables,
+                                  final CompoundStatement compoundStatement) {
+            this.name = name;
+            this.variables = variables == null ? Collections.emptyList() : variables;
+            this.compoundStatement = compoundStatement;
+        }
     }
 
-    public static abstract class Statement extends AST {
+    @Getter
+    @ToString
+    public static class VariableDefinition extends Declaration {
+        private final String name;
+
+        public VariableDefinition(String name) {
+            this.name = name;
+        }
+    }
+
+    public static abstract class Expression extends AST {
+    }
+
+    @Getter
+    @ToString
+    public static class AssignmentStatement extends SingleStatement {
+        private final MemoryAccessExpression memoryAccess;
+        private final Expression expression;
+
+        public AssignmentStatement(MemoryAccessExpression memoryAccess, Expression expression) {
+            this.memoryAccess = memoryAccess;
+            this.expression = expression;
+        }
     }
 
     public static abstract class IterationStatement extends SingleStatement {
@@ -57,15 +92,74 @@ public class AST {
 
     }
 
+    public static abstract class JumpStatement extends SingleStatement {
+
+    }
+
+    @Getter
+    @ToString
+    public static class GotoStatement extends JumpStatement {
+        private final String label;
+
+        public GotoStatement(String label) {
+            this.label = label;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class ContinueStatement extends JumpStatement {
+
+    }
+
+    @Getter
+    @ToString
+    public static class BreakStatement extends JumpStatement {
+
+    }
+
+    @Getter
+    @ToString
+    public static class ReturnStatement extends JumpStatement {
+        private final AST.Expression expression;
+
+        public ReturnStatement(Expression expression) {
+            this.expression = expression;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class SkipStatement extends JumpStatement {
+
+    }
+
     @Getter
     @ToString
     public static class IfStatement extends SelectionStatement {
-        private final List<AST.Expression> conditions;
+        /*private final List<AST.Expression> conditions;
         private final List<AST.CompoundStatement> compoundStatements;
 
         public IfStatement(List<Expression> conditions, List<CompoundStatement> compoundStatements) {
             this.conditions = conditions;
             this.compoundStatements = compoundStatements;
+        }*/
+        private final List<AST.IfCase> cases;
+
+        public IfStatement(final List<IfCase> cases) {
+            this.cases = cases == null ? Collections.emptyList() : cases;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class IfCase {
+        private final AST.Expression condition;
+        private final AST.CompoundStatement compoundStatement;
+
+        public IfCase(Expression condition, CompoundStatement compoundStatement) {
+            this.condition = condition;
+            this.compoundStatement = compoundStatement;
         }
     }
 
@@ -96,12 +190,12 @@ public class AST {
     @Getter
     @ToString
     public static class ForStatement extends IterationStatement {
-        private final Expression init;
+        private final AssignmentStatement init;
         private final Expression condition;
-        private final Expression loop;
+        private final AssignmentStatement loop;
         private final CompoundStatement compoundStatement;
 
-        public ForStatement(Expression init, Expression condition, Expression loop, CompoundStatement compoundStatement) {
+        public ForStatement(AssignmentStatement init, Expression condition, AssignmentStatement loop, CompoundStatement compoundStatement) {
             this.init = init;
             this.condition = condition;
             this.loop = loop;
@@ -133,6 +227,7 @@ public class AST {
         }
     }
 
+    @Getter
     @ToString
     public static class UnaryExpression extends Expression {
         private final String operator;
@@ -152,7 +247,17 @@ public class AST {
 
         public FunctionCall(String name, List<Expression> arguments) {
             this.name = name;
-            this.arguments = arguments;
+            this.arguments = arguments == null ? Collections.emptyList() : arguments;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class ArrayCreationExpression extends Expression {
+        private final List<Expression> arguments;
+
+        public ArrayCreationExpression(List<Expression> arguments) {
+            this.arguments = arguments == null ? Collections.emptyList() : arguments;
         }
     }
 
@@ -190,6 +295,14 @@ public class AST {
         }
     }
 
+    @Getter
+    @ToString(callSuper = true)
+    public static class NullLiteral extends Literal<Void> {
+        public NullLiteral() {
+            super(null);
+        }
+    }
+
     public static abstract class MemoryAccessExpression extends Expression {
 
     }
@@ -207,24 +320,12 @@ public class AST {
     @Getter
     @ToString
     public static class ArrayAccessExpression extends MemoryAccessExpression {
-        private final String name;
-        private final List<Expression> expressions;
+        private final MemoryAccessExpression pointer;
+        private final Expression expressions;
 
-        public ArrayAccessExpression(String name, List<Expression> expressions) {
-            this.name = name;
-            this.expressions = expressions;
-        }
-    }
-
-    @Getter
-    @ToString
-    public static class AssignmentExpression extends Expression {
-        private final MemoryAccessExpression memoryAccess;
-        private final Expression expression;
-
-        public AssignmentExpression(MemoryAccessExpression memoryAccess, Expression expression) {
-            this.memoryAccess = memoryAccess;
-            this.expression = expression;
+        public ArrayAccessExpression(MemoryAccessExpression pointer, Expression index) {
+            this.pointer = pointer;
+            this.expressions = index;
         }
     }
 }

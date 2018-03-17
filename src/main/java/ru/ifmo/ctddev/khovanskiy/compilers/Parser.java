@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.khovanskiy.compilers;
 
 import lombok.extern.slf4j.Slf4j;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageParser;
 
@@ -28,9 +29,9 @@ public class Parser extends LanguageBaseVisitor<AST> {
 
     @Override
     public AST.SingleStatement visitSingleStatement(LanguageParser.SingleStatementContext ctx) {
-        if (ctx.expressionStatement() != null) {
+        /*if (ctx.expressionStatement() != null) {
             return visitExpressionStatement(ctx.expressionStatement());
-        }
+        }*/
         if (ctx.iterationStatement() != null) {
             if (ctx.iterationStatement() instanceof LanguageParser.WhileContext) {
                 return visitWhile((LanguageParser.WhileContext) ctx.iterationStatement());
@@ -42,15 +43,15 @@ public class Parser extends LanguageBaseVisitor<AST> {
                 return visitFor((LanguageParser.ForContext) ctx.iterationStatement());
             }
         }
-        if (ctx.selectionStatement() != null) {
-            if (ctx.selectionStatement() instanceof LanguageParser.IfContext) {
-                return visitIf((LanguageParser.IfContext) ctx.selectionStatement());
-            }
-        }
+//        if (ctx.selectionStatement() != null) {
+//            if (ctx.selectionStatement() instanceof LanguageParser.IfContext) {
+//                return visitIf((LanguageParser.IfContext) ctx.selectionStatement());
+//            }
+//        }
         throw new IllegalArgumentException();
     }
 
-    @Override
+    /*@Override
     public AST.IfStatement visitIf(LanguageParser.IfContext ctx) {
         List<AST.Expression> conditions = ctx.expression().stream()
                 .map(this::visitExpression)
@@ -59,7 +60,9 @@ public class Parser extends LanguageBaseVisitor<AST> {
                 .map(this::visitCompoundStatement)
                 .collect(Collectors.toList());
         return new AST.IfStatement(conditions, compoundStatements);
-    }
+    }*/
+
+
 
     @Override
     public AST.WhileStatement visitWhile(LanguageParser.WhileContext ctx) {
@@ -77,24 +80,21 @@ public class Parser extends LanguageBaseVisitor<AST> {
 
     @Override
     public AST.ForStatement visitFor(LanguageParser.ForContext ctx) {
-        AST.Expression init = visitExpression(ctx.init);
+        AST.AssignmentStatement init = visitAssignmentStatement(ctx.init);
         AST.Expression condition = visitExpression(ctx.condition);
-        AST.Expression loop = visitExpression(ctx.loop);
+        AST.AssignmentStatement loop = visitAssignmentStatement(ctx.loop);
         AST.CompoundStatement compoundStatement = visitCompoundStatement(ctx.compoundStatement());
         return new AST.ForStatement(init, condition, loop, compoundStatement);
     }
 
     @Override
     public AST.ExpressionStatement visitExpressionStatement(LanguageParser.ExpressionStatementContext ctx) {
-        AST.Expression expression = visitExpression(ctx.expression());
+        AST.Expression expression = visitFunctionCall(ctx.functionCall());
         return new AST.ExpressionStatement(expression);
     }
 
     @Override
     public AST.Expression visitExpression(LanguageParser.ExpressionContext ctx) {
-        if (ctx.skip() != null) {
-            return new AST.Skip();
-        }
         if (ctx.binaryOperator != null) {
             AST.Expression left = visitExpression(ctx.left);
             AST.Expression right = visitExpression(ctx.right);
@@ -106,9 +106,9 @@ public class Parser extends LanguageBaseVisitor<AST> {
             AST.Expression expression = visitExpression(ctx.expression(0));
             return new AST.UnaryExpression(operator, expression);
         }
-        if (ctx.assignment() != null) {
+        /*if (ctx.assignment() != null) {
             return visitAssignment(ctx.assignment());
-        }
+        }*/
         if (ctx.memoryAccess() != null) {
             return visitMemoryAccess(ctx.memoryAccess());
         }
@@ -124,7 +124,7 @@ public class Parser extends LanguageBaseVisitor<AST> {
     @Override
     public AST.FunctionCall visitFunctionCall(LanguageParser.FunctionCallContext ctx) {
         String name = ctx.Identifier().getSymbol().getText().toLowerCase();
-        List<AST.Expression> arguments = ctx.expression().stream().map(this::visitExpression).collect(Collectors.toList());
+        List<AST.Expression> arguments = ctx.argumentList().list;
         return new AST.FunctionCall(name, arguments);
     }
 
@@ -165,15 +165,17 @@ public class Parser extends LanguageBaseVisitor<AST> {
 
     @Override
     public AST.ArrayAccessExpression visitArrayAccess(LanguageParser.ArrayAccessContext ctx) {
-        String name = ctx.Identifier().getSymbol().getText();
-        List<AST.Expression> expressions = ctx.expression().stream().map(this::visitExpression).collect(Collectors.toList());
-        return new AST.ArrayAccessExpression(name, expressions);
+        //String name = ctx.Identifier().getSymbol().getText();
+        //List<AST.Expression> expressions = ctx.expression().stream().map(this::visitExpression).collect(Collectors.toList());
+        //if (ctx.variableAccess() )
+        //return new AST.ArrayAccessExpression(name, expressions);
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public AST.AssignmentExpression visitAssignment(LanguageParser.AssignmentContext ctx) {
+    public AST.AssignmentStatement visitAssignmentStatement(LanguageParser.AssignmentStatementContext ctx) {
         AST.MemoryAccessExpression memoryAccess = visitMemoryAccess(ctx.memoryAccess());
         AST.Expression expression = visitExpression(ctx.expression());
-        return new AST.AssignmentExpression(memoryAccess, expression);
+        return new AST.AssignmentStatement(memoryAccess, expression);
     }
 }

@@ -2,12 +2,16 @@ package ru.ifmo.ctddev.khovanskiy.compilers.parser;
 
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.ASTPrinter;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.PrinterContext;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -22,20 +26,22 @@ public class ParserTest extends BaseTest {
             System.out.println(path.getFileName());
             try {
                 parseFile(path);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         });
     }
 
-    private void parseFile(Path path) throws IOException {
+    private void parseFile(Path path) throws Exception {
         ANTLRInputStream input = new ANTLRInputStream(new FileReader(path.toFile()));
         LanguageLexer lexer = new LanguageLexer(input);
         CommonTokenStream tokenStream = new CommonTokenStream(lexer);
         LanguageParser parser = new LanguageParser(tokenStream);
 
-        ParseTree tree = parser.compilationUnit();
-        System.out.println(tree.toStringTree());
+        final AST.CompilationUnit ast = parser.compilationUnit().ast;
+        final ASTPrinter printer = new ASTPrinter();
+        final Writer writer = new PrintWriter(System.out);
+        printer.visitCompilationUnit(ast, new PrinterContext(writer));
     }
 
     private Stream<Path> getTests(final String directory) {
