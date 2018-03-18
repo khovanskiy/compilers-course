@@ -73,7 +73,6 @@ public class AST {
     }
 
     @Getter
-    @ToString
     public static class AssignmentStatement extends SingleStatement {
         private final MemoryAccessExpression memoryAccess;
         private final Expression expression;
@@ -81,6 +80,11 @@ public class AST {
         public AssignmentStatement(MemoryAccessExpression memoryAccess, Expression expression) {
             this.memoryAccess = memoryAccess;
             this.expression = expression;
+        }
+
+        @Override
+        public String toString() {
+            return memoryAccess + " := " + expression;
         }
     }
 
@@ -214,7 +218,6 @@ public class AST {
     }
 
     @Getter
-    @ToString
     public static class BinaryExpression extends Expression {
         private final String operator;
         private final AST.Expression left;
@@ -224,6 +227,11 @@ public class AST {
             this.operator = operator;
             this.left = left;
             this.right = right;
+        }
+
+        @Override
+        public String toString() {
+            return "(" + left + " " + operator + " " + right + ")";
         }
     }
 
@@ -272,26 +280,38 @@ public class AST {
     }
 
     @Getter
-    @ToString(callSuper = true)
     public static class IntegerLiteral extends Literal<Integer> {
         public IntegerLiteral(Integer value) {
             super(value);
         }
-    }
 
-    @Getter
-    @ToString(callSuper = true)
-    public static class CharacterLiteral extends Literal<Character> {
-        public CharacterLiteral(Character value) {
-            super(value);
+        @Override
+        public String toString() {
+            return getValue() + "";
         }
     }
 
     @Getter
-    @ToString(callSuper = true)
+    public static class CharacterLiteral extends Literal<Character> {
+        public CharacterLiteral(String value) {
+            super(value.charAt(1));
+        }
+
+        @Override
+        public String toString() {
+            return "'" + getValue() + "'";
+        }
+    }
+
+    @Getter
     public static class StringLiteral extends Literal<String> {
         public StringLiteral(String value) {
-            super(value);
+            super(value == null || value.isEmpty() ? "" : value.substring(1, value.length() - 1));
+        }
+
+        @Override
+        public String toString() {
+            return "\"" + getValue() + "\"";
         }
     }
 
@@ -308,12 +328,16 @@ public class AST {
     }
 
     @Getter
-    @ToString
     public static class VariableAccessExpression extends MemoryAccessExpression {
         private final String name;
 
         public VariableAccessExpression(String name) {
             this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
         }
     }
 

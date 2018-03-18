@@ -181,12 +181,12 @@ public class ASTPrinter extends AbstractASTVisitor<PrinterContext> {
 
     @Override
     public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, PrinterContext writer) throws IOException {
-        writer.append(String.valueOf(characterLiteral.getValue()));
+        writer.append("'" + String.valueOf(characterLiteral.getValue()) + "'");
     }
 
     @Override
     public void visitStringLiteral(AST.StringLiteral stringLiteral, PrinterContext writer) throws IOException {
-        writer.append(stringLiteral.getValue());
+        writer.append("\"" + stringLiteral.getValue() + "\"");
     }
 
     @Override

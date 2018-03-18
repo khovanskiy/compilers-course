@@ -134,15 +134,15 @@ public class Parser extends LanguageBaseVisitor<AST> {
             Integer value = Integer.parseInt(ctx.IntegerLiteral().getSymbol().getText());
             return new AST.IntegerLiteral(value);
         }
-        if (ctx.CharacterLiteral() != null) {
-            Character value = ctx.CharacterLiteral().getSymbol().getText().charAt(1);
-            return new AST.CharacterLiteral(value);
-        }
-        if (ctx.StringLiteral() != null) {
-            String value = ctx.StringLiteral().getSymbol().getText();
-            value = value.substring(1, value.length() - 1);
-            return new AST.StringLiteral(value);
-        }
+//        if (ctx.CharacterLiteral() != null) {
+//            Character value = ctx.CharacterLiteral().getSymbol().getText().charAt(1);
+//            return new AST.CharacterLiteral(value);
+//        }
+//        if (ctx.StringLiteral() != null) {
+//            String value = ctx.StringLiteral().getSymbol().getText();
+//            value = value.substring(1, value.length() - 1);
+//            return new AST.StringLiteral(value);
+//        }
         throw new IllegalArgumentException();
     }
 

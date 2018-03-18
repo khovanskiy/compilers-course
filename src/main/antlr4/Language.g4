@@ -220,8 +220,8 @@ expression returns [AST.Expression ast]
 
 //----------------------------------------------------------------------------------------------------------------------
 literal returns [AST.Literal ast]
-	:	IntegerLiteral { $ast = new AST.IntegerLiteral(Integer.parseInt($IntegerLiteral.text)); }
-	|   CharacterLiteral { $ast = new AST.CharacterLiteral($CharacterLiteral.text.charAt(0)); }
+	:   IntegerLiteral { $ast = new AST.IntegerLiteral(Integer.parseInt($IntegerLiteral.text)); }
+	|   CharacterLiteral { $ast = new AST.CharacterLiteral($CharacterLiteral.text); }
 	|	StringLiteral { $ast = new AST.StringLiteral($StringLiteral.text); }
 	|	NullLiteral { $ast = new AST.NullLiteral(); }
 	;
