@@ -170,7 +170,7 @@ public class ASTPrinter extends AbstractASTVisitor<PrinterContext> {
     public void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, PrinterContext writer) throws Exception {
         visitMemoryAccess(arrayAccessExpression.getPointer(), writer);
         writer.append("[");
-        visitExpression(arrayAccessExpression.getExpressions(), writer);
+        visitExpression(arrayAccessExpression.getExpression(), writer);
         writer.append("]");
     }
 

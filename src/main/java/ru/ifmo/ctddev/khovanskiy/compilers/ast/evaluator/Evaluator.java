@@ -3,8 +3,10 @@ package ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
     @Override
@@ -30,8 +32,33 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitVariableDefinition(AST.VariableDefinition variableDefinition, EvaluatorContext evaluatorContext) throws Exception {
+    public void visitVariableDefinition(AST.VariableDefinition variableDefinition, EvaluatorContext evaluatorContext) {
+        // do nothing
+    }
 
+    public void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, EvaluatorContext context) throws Exception {
+        if (memoryAccessExpression instanceof AST.VariableAccessExpression) {
+            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccessExpression, context);
+            return;
+        }
+        if (memoryAccessExpression instanceof AST.ArrayAccessExpression) {
+            visitArrayAccessForWriter((AST.ArrayAccessExpression) memoryAccessExpression, context);
+            return;
+        }
+        throw new IllegalStateException("Unknown memory access type: " + memoryAccessExpression.getClass());
+    }
+
+    public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(variableAccessExpression.getName());
+        context.setResult(new Symbol<>(pointer));
+    }
+
+    public void visitArrayAccessForWriter(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
+        visitExpression(arrayAccessExpression.getExpression(), context);
+        final int index = context.getResult(Integer.class).getValue();
+        visitMemoryAccessForWrite(arrayAccessExpression.getPointer(), context);
+        final Pointer pointer = context.getResult(Pointer.class).getValue();
+        context.setResult(new Symbol<>(new ArrayPointer(pointer, index)));
     }
 
     @Override
@@ -41,19 +68,42 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
         final Symbol newSymbol = context.getResult(Object.class);
         AST.MemoryAccessExpression memoryAccess = assignmentStatement.getMemoryAccess();
         if (memoryAccess instanceof AST.VariableAccessExpression) {
-            AST.VariableAccessExpression a = (AST.VariableAccessExpression) memoryAccess;
-            final VariablePointer pointer = new VariablePointer(a.getName());
+            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccess, context);
+            final VariablePointer pointer = context.getResult(VariablePointer.class).getValue();
+            setValue(pointer, k -> newSymbol, context);
+            return;
+        }
+        if (memoryAccess instanceof AST.ArrayAccessExpression) {
+            visitArrayAccessForWriter((AST.ArrayAccessExpression) memoryAccess, context);
+            final ArrayPointer pointer = context.getResult(ArrayPointer.class).getValue();
+            setValue(pointer, k -> newSymbol, context);
+            return;
+        }
+        throw new IllegalStateException("Unknown memory access type: " + memoryAccess.getClass());
+    }
+
+    private void setValue(Pointer pointer, Function<Symbol, Symbol> callback, EvaluatorContext context) {
+        if (pointer instanceof VariablePointer) {
             context.update(pointer, oldSymbol -> {
-                if (oldSymbol != null && newSymbol != null && !oldSymbol.getValue().getClass().equals(newSymbol.getValue().getClass())) {
-                    throw new IllegalStateException();
+                final Symbol newSymbol = callback.apply(oldSymbol);
+                if (oldSymbol != null && newSymbol != null) {
+                    Class<?> oldClass = oldSymbol.getValue().getClass();
+                    Class<?> newClass = newSymbol.getValue().getClass();
+                    if (!oldClass.equals(newClass)) {
+                        throw new IllegalStateException(String.format("Types of \"%s\" are not equal: %s != %s", pointer, oldClass, newClass));
+                    }
                 }
                 return newSymbol;
             });
-            return;
+        } else if (pointer instanceof ArrayPointer) {
+            ArrayPointer pointer1 = ((ArrayPointer) pointer);
+            setValue(pointer1.getPointer(), oldSymbol -> {
+                final Symbol newSymbol = callback.apply(oldSymbol);
+                final List oldValue = List.class.cast(oldSymbol.getValue());
+                oldValue.set(pointer1.getIndex(), newSymbol.getValue());
+                return new Symbol<>(oldValue);
+            }, context);
         }
-//        if (memoryAccess instanceof AST.ArrayAccessExpression) {
-//            c
-//        }
     }
 
     @Override
@@ -188,8 +238,13 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, EvaluatorContext evaluatorContext) throws Exception {
-
+    public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, EvaluatorContext context) throws Exception {
+        List<Object> arr = new ArrayList<>(arrayCreationExpression.getArguments().size());
+        for (int i = 0; i < arrayCreationExpression.getArguments().size(); ++i) {
+            visitExpression(arrayCreationExpression.getArguments().get(i), context);
+            arr.add(context.getResult(Object.class).getValue());
+        }
+        context.setResult(new Symbol<>(arr));
     }
 
     @Override
@@ -202,12 +257,26 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
 
     @Override
     public void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
-        visitExpression(arrayAccessExpression.getExpressions(), context);
-        final Symbol<Integer> index = context.getResult(Integer.class);
+        // right-value case
+        visitExpression(arrayAccessExpression.getExpression(), context);
+        final int index = context.getResult(Integer.class).getValue();
         visitMemoryAccess(arrayAccessExpression.getPointer(), context);
-        //final context.getResult(int[].class).getValue()[index.getValue()];
-        final ArrayPointer pointer = new ArrayPointer();
+        final List array = context.getResult(List.class).getValue();
+        context.setResult(new Symbol<>(array.get(index)));
     }
+
+//    public Symbol getValue(Pointer pointer, EvaluatorContext context) {
+//        if (pointer instanceof VariablePointer) {
+//            return context.get(pointer, Object.class);
+//        } else if (pointer instanceof ArrayPointer) {
+//            final ArrayPointer arrayPointer = (ArrayPointer) pointer;
+//            Symbol symbol = getValue(arrayPointer.getPointer(), context);
+//            int[] array = int[].class.cast(symbol.getValue());
+//            int index = arrayPointer.getIndex();
+//            return new Symbol<>(array[index]);
+//        }
+//        throw new IllegalStateException();
+//    }
 
     @Override
     public void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, EvaluatorContext context) {
@@ -225,8 +294,8 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitNullLiteral(AST.NullLiteral nullLiteral, EvaluatorContext evaluatorContext) throws Exception {
-
+    public void visitNullLiteral(AST.NullLiteral nullLiteral, EvaluatorContext context) throws Exception {
+        context.setResult(new Symbol<>(new NullPointer()));
     }
 
     @Override

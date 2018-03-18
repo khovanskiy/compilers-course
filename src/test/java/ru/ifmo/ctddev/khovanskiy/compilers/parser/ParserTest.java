@@ -24,7 +24,7 @@ public class ParserTest extends BaseTest {
 
     @Test
     public void testCore() throws IOException {
-        getTests("./compiler-tests/core").skip(28).limit(1).forEach(path -> {
+        getTests("./compiler-tests/core").forEach(path -> {
             System.out.println(path.getFileName());
             try {
                 parseFile(path);
@@ -35,12 +35,7 @@ public class ParserTest extends BaseTest {
     }
 
     private void parseFile(Path path) throws Exception {
-        ANTLRInputStream input = new ANTLRInputStream(new FileReader(path.toFile()));
-        LanguageLexer lexer = new LanguageLexer(input);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        LanguageParser parser = new LanguageParser(tokenStream);
-
-        final AST.CompilationUnit ast = parser.compilationUnit().ast;
+        final AST.CompilationUnit ast = parseAST(path.toFile());
         {
             final ASTPrinter printer = new ASTPrinter();
             final Writer writer = new PrintWriter(System.out);
@@ -56,6 +51,14 @@ public class ParserTest extends BaseTest {
             Evaluator evaluator = new Evaluator();
             evaluator.visitCompilationUnit(ast, context);
         }
+    }
+
+    private AST.CompilationUnit parseAST(final File file) throws IOException {
+        ANTLRInputStream input = new ANTLRInputStream(new FileReader(file));
+        LanguageLexer lexer = new LanguageLexer(input);
+        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
+        LanguageParser parser = new LanguageParser(tokenStream);
+        return parser.compilationUnit().ast;
     }
 
     private Map<Pointer, Symbol> defineExternalFunctions(final FileReader reader, final FileWriter writer) {
@@ -77,6 +80,8 @@ public class ParserTest extends BaseTest {
         externals.put(new FunctionPointer("strmake"), new Symbol<>(new StrmakeExternalFunction()));
         // arrays
         externals.put(new FunctionPointer("arrlen"), new Symbol<>(new ArrlenExternalFunction()));
+        externals.put(new FunctionPointer("arrmake"), new Symbol<>(new ArrmakeExternalFunction()));
+        externals.put(new FunctionPointer("Arrmake"), new Symbol<>(new DynamicArrmakeExternalFunction()));
         return externals;
     }
 

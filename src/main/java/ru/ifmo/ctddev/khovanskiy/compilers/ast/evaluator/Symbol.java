@@ -2,6 +2,8 @@ package ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator;
 
 import lombok.Getter;
 
+import java.util.Objects;
+
 @Getter
 public class Symbol<T> {
     private final T value;
@@ -12,9 +14,12 @@ public class Symbol<T> {
 
     @Override
     public String toString() {
+        final String inner;
         if (value instanceof char[]) {
-            return new String((char[]) value);
+            inner = new String((char[]) value);
+        } else {
+            inner = Objects.toString(value);
         }
-        return super.toString();
+        return "Symbol(" + inner + ")";
     }
 }

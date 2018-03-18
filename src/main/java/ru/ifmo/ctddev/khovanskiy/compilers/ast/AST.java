@@ -342,14 +342,18 @@ public class AST {
     }
 
     @Getter
-    @ToString
     public static class ArrayAccessExpression extends MemoryAccessExpression {
         private final MemoryAccessExpression pointer;
-        private final Expression expressions;
+        private final Expression expression;
 
         public ArrayAccessExpression(MemoryAccessExpression pointer, Expression index) {
             this.pointer = pointer;
-            this.expressions = index;
+            this.expression = index;
+        }
+
+        @Override
+        public String toString() {
+            return pointer + "[" + expression + "]";
         }
     }
 }

@@ -7,10 +7,10 @@ public class StrmakeExternalFunction extends ExternalFunction {
         assert args[0] != null && Integer.class.isInstance(args[0]);
         assert args[1] != null && Character.class.isInstance(args[1]);
         int length = (int) args[0];
-        char character = (char) args[1];
+        char defaultValue = (char) args[1];
         char[] str = new char[length];
         for (int i = 0; i < length; ++i) {
-            str[i] = character;
+            str[i] = defaultValue;
         }
         return str;
     }

@@ -152,7 +152,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
             visitArrayAccess((AST.ArrayAccessExpression) memoryAccessExpression, c);
             return;
         }
-        throw new IllegalStateException("");
+        throw new IllegalStateException("Unknown memory access type: " + memoryAccessExpression.getClass());
     }
 
     @Override
