@@ -1,9 +1,9 @@
 grammar Language;
 
 @header {
-package ru.ifmo.ctddev.khovanskiy.compilers.parser;
+package ru.ifmo.ctddev.khovanskiy.compilers.ast.parser;
 
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.*;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import java.util.List;
 import java.util.ArrayList;
 }
@@ -212,7 +212,7 @@ expression returns [AST.Expression ast]
     {
         $ast = new AST.BinaryExpression($binaryOperator.text, $left.ast, $right.ast);
     }
-    |   left=expression binaryOperator='||' right=expression
+    |   left=expression binaryOperator=('||' | '!!') right=expression
     {
         $ast = new AST.BinaryExpression($binaryOperator.text, $left.ast, $right.ast);
     }

@@ -1,52 +1,13 @@
 package ru.ifmo.ctddev.khovanskiy.compilers;
 
 import lombok.extern.slf4j.Slf4j;
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.tree.ParseTree;
-import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageBaseVisitor;
-import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageLexer;
-import ru.ifmo.ctddev.khovanskiy.compilers.parser.LanguageParser;
-
-import java.io.IOException;
-import java.io.StringReader;
 
 /**
- * @author victor
+ * @author Victor Khovanskiy
  */
 @Slf4j
 public class Main {
-    public static void main(String[] args) throws IOException {
-        ANTLRInputStream input = new ANTLRInputStream(new StringReader("x := 5;"));
-        LanguageLexer lexer = new LanguageLexer(input);
-        CommonTokenStream tokenStream = new CommonTokenStream(lexer);
-        LanguageParser parser = new LanguageParser(tokenStream);
+    public static void main(String[] args) {
 
-        ParseTree tree = parser.compilationUnit();
-        System.out.println(tree.toStringTree());
-        new LanguageBaseVisitor<ParseTree>(){
-
-        }.visit(tree);
-        /*ParseTreeWalker walker = new ParseTreeWalker();
-        LanguageListener listener = new LanguageBaseListener() {
-            @Override
-            public void enterProgram(LanguageParser.ProgramContext ctx) {
-                super.enterProgram(ctx);
-                log.info("Enter the program");
-            }
-
-            @Override
-            public void enterAssignment(LanguageParser.AssignmentContext ctx) {
-                super.enterAssignment(ctx);
-            }
-
-            @Override
-            public void exitProgram(LanguageParser.ProgramContext ctx) {
-                super.exitProgram(ctx);
-                log.info("Exit the program");
-            }
-        };
-        walker.walk(listener, tree);*/
-        log.info("Hello, World!");
     }
 }

@@ -339,10 +339,11 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
                 result = (int) lo | (int) ro;
                 break;
             case "&&":
-                result = Objects.equals(lo, 1) && Objects.equals(ro, 1) ? 1 : 0;
+                result = !Objects.equals(lo, 0) && !Objects.equals(ro, 0) ? 1 : 0;
                 break;
+            case "!!":
             case "||":
-                result = Objects.equals(lo, 1) || Objects.equals(ro, 1) ? 1 : 0;
+                result = !Objects.equals(lo, 0) || !Objects.equals(ro, 0) ? 1 : 0;
                 break;
             case ">":
                 result = (int) lo > (int) ro ? 1 : 0;

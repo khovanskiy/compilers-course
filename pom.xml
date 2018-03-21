@@ -82,7 +82,9 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <outputDirectory>${project.build.directory}/generated-sources/ru/ifmo/ctddev/khovanskiy/compilers/parser</outputDirectory>
+                    <outputDirectory>
+                        ${project.build.directory}/generated-sources/ru/ifmo/ctddev/khovanskiy/compilers/ast/parser
+                    </outputDirectory>
                     <listener>true</listener>
                     <visitor>true</visitor>
                 </configuration>
