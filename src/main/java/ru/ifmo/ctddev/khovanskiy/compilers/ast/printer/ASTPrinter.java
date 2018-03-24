@@ -175,6 +175,16 @@ public class ASTPrinter extends AbstractASTVisitor<PrinterContext> {
     }
 
     @Override
+    public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, PrinterContext context) throws Exception {
+        visitVariableAccess(variableAccessExpression, context);
+    }
+
+    @Override
+    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, PrinterContext context) {
+        visitArrayAccessForWrite(arrayAccessExpression, context);
+    }
+
+    @Override
     public void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, PrinterContext writer) throws IOException {
         writer.append(String.valueOf(integerLiteral.getValue()));
     }

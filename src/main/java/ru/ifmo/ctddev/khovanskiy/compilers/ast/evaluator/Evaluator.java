@@ -36,50 +36,77 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
         // do nothing
     }
 
-    public void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, EvaluatorContext context) throws Exception {
-        if (memoryAccessExpression instanceof AST.VariableAccessExpression) {
-            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccessExpression, context);
-            return;
+    public static int evaluateBinaryExpression(String operator, Object lo, Object ro) {
+        int result;
+        switch (operator) {
+            case "*":
+                result = (int) lo * (int) ro;
+                break;
+            case "/":
+                result = (int) lo / (int) ro;
+                break;
+            case "%":
+                result = (int) lo % (int) ro;
+                break;
+            case "+":
+                result = (int) lo + (int) ro;
+                break;
+            case "-":
+                result = (int) lo - (int) ro;
+                break;
+            case "&":
+                result = (int) lo & (int) ro;
+                break;
+            case "^":
+                result = (int) lo ^ (int) ro;
+                break;
+            case "|":
+                result = (int) lo | (int) ro;
+                break;
+            case "&&":
+                result = !Objects.equals(lo, 0) && !Objects.equals(ro, 0) ? 1 : 0;
+                break;
+            case "!!":
+            case "||":
+                result = !Objects.equals(lo, 0) || !Objects.equals(ro, 0) ? 1 : 0;
+                break;
+            case ">":
+                result = (int) lo > (int) ro ? 1 : 0;
+                break;
+            case "<":
+                result = (int) lo < (int) ro ? 1 : 0;
+                break;
+            case "<=":
+                result = (int) lo <= (int) ro ? 1 : 0;
+                break;
+            case ">=":
+                result = (int) lo >= (int) ro ? 1 : 0;
+                break;
+            case "==":
+                result = Objects.equals(lo, ro) ? 1 : 0;
+                break;
+            case "!=":
+                result = !Objects.equals(lo, ro) ? 1 : 0;
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown binary operator");
         }
-        if (memoryAccessExpression instanceof AST.ArrayAccessExpression) {
-            visitArrayAccessForWriter((AST.ArrayAccessExpression) memoryAccessExpression, context);
-            return;
-        }
-        throw new IllegalStateException("Unknown memory access type: " + memoryAccessExpression.getClass());
+        return result;
     }
 
+    @Override
     public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, EvaluatorContext context) {
         final VariablePointer pointer = new VariablePointer(variableAccessExpression.getName());
         context.setResult(new Symbol<>(pointer));
     }
 
-    public void visitArrayAccessForWriter(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
+    @Override
+    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
         visitExpression(arrayAccessExpression.getExpression(), context);
         final int index = context.getResult(Integer.class).getValue();
         visitMemoryAccessForWrite(arrayAccessExpression.getPointer(), context);
         final Pointer pointer = context.getResult(Pointer.class).getValue();
         context.setResult(new Symbol<>(new ArrayPointer(pointer, index)));
-    }
-
-    @Override
-    public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, EvaluatorContext context) throws Exception {
-        AST.Expression expression = assignmentStatement.getExpression();
-        visitExpression(expression, context);
-        final Symbol newSymbol = context.getResult(Object.class);
-        AST.MemoryAccessExpression memoryAccess = assignmentStatement.getMemoryAccess();
-        if (memoryAccess instanceof AST.VariableAccessExpression) {
-            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccess, context);
-            final VariablePointer pointer = context.getResult(VariablePointer.class).getValue();
-            setValue(pointer, k -> newSymbol, context);
-            return;
-        }
-        if (memoryAccess instanceof AST.ArrayAccessExpression) {
-            visitArrayAccessForWriter((AST.ArrayAccessExpression) memoryAccess, context);
-            final ArrayPointer pointer = context.getResult(ArrayPointer.class).getValue();
-            setValue(pointer, k -> newSymbol, context);
-            return;
-        }
-        throw new IllegalStateException("Unknown memory access type: " + memoryAccess.getClass());
     }
 
     private void setValue(Pointer pointer, Function<Symbol, Symbol> callback, EvaluatorContext context) {
@@ -304,6 +331,27 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
+    public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, EvaluatorContext context) throws Exception {
+        AST.Expression expression = assignmentStatement.getExpression();
+        visitExpression(expression, context);
+        final Symbol newSymbol = context.getResult(Object.class);
+        AST.MemoryAccessExpression memoryAccess = assignmentStatement.getMemoryAccess();
+        if (memoryAccess instanceof AST.VariableAccessExpression) {
+            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccess, context);
+            final VariablePointer pointer = context.getResult(VariablePointer.class).getValue();
+            setValue(pointer, k -> newSymbol, context);
+            return;
+        }
+        if (memoryAccess instanceof AST.ArrayAccessExpression) {
+            visitArrayAccessForWrite((AST.ArrayAccessExpression) memoryAccess, context);
+            final ArrayPointer pointer = context.getResult(ArrayPointer.class).getValue();
+            setValue(pointer, k -> newSymbol, context);
+            return;
+        }
+        throw new IllegalStateException("Unknown memory access type: " + memoryAccess.getClass());
+    }
+
+    @Override
     public void visitBinaryExpression(AST.BinaryExpression binaryExpression, EvaluatorContext context) throws Exception {
         visitExpression(binaryExpression.getLeft(), context);
         final Object lo = context.getResult(Object.class).getValue();
@@ -312,60 +360,7 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
         if (lo.getClass() != ro.getClass()) {
             throw new RuntimeException();
         }
-        int result;
-        switch (binaryExpression.getOperator()) {
-            case "*":
-                result = (int) lo * (int) ro;
-                break;
-            case "/":
-                result = (int) lo / (int) ro;
-                break;
-            case "%":
-                result = (int) lo % (int) ro;
-                break;
-            case "+":
-                result = (int) lo + (int) ro;
-                break;
-            case "-":
-                result = (int) lo - (int) ro;
-                break;
-            case "&":
-                result = (int) lo & (int) ro;
-                break;
-            case "^":
-                result = (int) lo ^ (int) ro;
-                break;
-            case "|":
-                result = (int) lo | (int) ro;
-                break;
-            case "&&":
-                result = !Objects.equals(lo, 0) && !Objects.equals(ro, 0) ? 1 : 0;
-                break;
-            case "!!":
-            case "||":
-                result = !Objects.equals(lo, 0) || !Objects.equals(ro, 0) ? 1 : 0;
-                break;
-            case ">":
-                result = (int) lo > (int) ro ? 1 : 0;
-                break;
-            case "<":
-                result = (int) lo < (int) ro ? 1 : 0;
-                break;
-            case "<=":
-                result = (int) lo <= (int) ro ? 1 : 0;
-                break;
-            case ">=":
-                result = (int) lo >= (int) ro ? 1 : 0;
-                break;
-            case "==":
-                result = Objects.equals(lo, ro) ? 1 : 0;
-                break;
-            case "!=":
-                result = !Objects.equals(lo, ro) ? 1 : 0;
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown binary operation");
-        }
+        int result = evaluateBinaryExpression(binaryExpression.getOperator(), lo, ro);
         context.setResult(new Symbol<>(result));
     }
 }

@@ -8,8 +8,8 @@ public class ReadExternalFunction extends ExternalFunction {
     private final Scanner scanner;
     private final Writer writer;
 
-    public ReadExternalFunction(Reader scanner, Writer writer) {
-        this.scanner = new Scanner(scanner);
+    public ReadExternalFunction(Reader reader, Writer writer) {
+        this.scanner = new Scanner(reader);
         this.writer = writer;
     }
 

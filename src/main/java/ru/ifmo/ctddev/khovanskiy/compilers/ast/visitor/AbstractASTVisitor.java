@@ -156,6 +156,19 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
+    public void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception {
+        if (memoryAccessExpression instanceof AST.VariableAccessExpression) {
+            visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccessExpression, c);
+            return;
+        }
+        if (memoryAccessExpression instanceof AST.ArrayAccessExpression) {
+            visitArrayAccessForWrite((AST.ArrayAccessExpression) memoryAccessExpression, c);
+            return;
+        }
+        throw new IllegalStateException("Unknown memory access type: " + memoryAccessExpression.getClass());
+    }
+
+    @Override
     public void visitLiteral(AST.Literal literal, C c) throws Exception {
         if (literal instanceof AST.IntegerLiteral) {
             visitIntegerLiteral((AST.IntegerLiteral) literal, c);

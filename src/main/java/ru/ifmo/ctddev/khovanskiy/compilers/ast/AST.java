@@ -10,7 +10,7 @@ import java.util.List;
  * @author victor
  */
 @ToString
-public class AST {
+public abstract class AST {
 
     @Getter
     @ToString

@@ -55,6 +55,12 @@ public interface ASTVisitor<C> {
 
     void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, C c) throws Exception;
 
+    void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception;
+
+    void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, C c) throws Exception;
+
+    void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, C c) throws Exception;
+
     void visitLiteral(AST.Literal literal, C c) throws Exception;
 
     void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, C c) throws Exception;
