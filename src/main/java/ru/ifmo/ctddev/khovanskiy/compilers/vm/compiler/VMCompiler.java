@@ -42,9 +42,23 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, CompilerContext compilerContext) throws Exception {
-        visitExpression(assignmentStatement.getExpression(), compilerContext);
-        visitMemoryAccessForWrite(assignmentStatement.getMemoryAccess(), compilerContext);
-//        compilerContext.addCommand(new VM.Assign());
+        if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
+            AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
+            String oldName = variableAccessExpression.getName();
+            String newName = compilerContext.getScope().rename(oldName);
+            // expression
+            visitExpression(assignmentStatement.getExpression(), compilerContext);
+            //
+            compilerContext.addCommand(new VM.IStore(newName));
+        } else {
+            AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
+            visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
+            visitExpression(arrayAccessExpression.getExpression(), compilerContext);
+            // expression
+            visitExpression(assignmentStatement.getExpression(), compilerContext);
+            //
+            compilerContext.addCommand(new VM.IAStore());
+        }
     }
 
     @Override
@@ -124,6 +138,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitForStatement(AST.ForStatement forStatement, CompilerContext compilerContext) throws Exception {
+        compilerContext.addCommand(new VM.Comment("Start: for"));
         if (forStatement.getInit() != null) {
             visitAssignmentStatement(forStatement.getInit(), compilerContext);
         }
@@ -140,6 +155,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
         }
         compilerContext.addCommand(new VM.Goto(loopLabel));
         compilerContext.addCommand(new VM.Label(endLabel));
+        compilerContext.addCommand(new VM.Comment("End: for"));
     }
 
     @Override
@@ -154,31 +170,40 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, CompilerContext compilerContext) throws Exception {
-
+        List<AST.Expression> arguments = arrayCreationExpression.getArguments();
+        final int length = arguments.size();
+        compilerContext.addCommand(new VM.IConst(length));
+        compilerContext.addCommand(new VM.NewArray());
+        for (int i = 0; i < length; ++i) {
+            compilerContext.addCommand(new VM.Dup());
+            compilerContext.addCommand(new VM.IConst(i));
+            visitExpression(arguments.get(i), compilerContext);
+            compilerContext.addCommand(new VM.IAStore());
+        }
     }
 
     @Override
     public void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) throws Exception {
         String oldName = variableAccessExpression.getName();
         String newName = compilerContext.getScope().rename(oldName);
-        compilerContext.addCommand(new VM.Load(newName));
+        compilerContext.addCommand(new VM.ILoad(newName));
     }
 
     @Override
     public void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, CompilerContext compilerContext) throws Exception {
-
+        visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
+        visitExpression(arrayAccessExpression.getExpression(), compilerContext);
+        compilerContext.addCommand(new VM.IALoad());
     }
 
     @Override
     public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) {
-        String oldName = variableAccessExpression.getName();
-        String newName = compilerContext.getScope().rename(oldName);
-        compilerContext.addCommand(new VM.Store(newName));
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, CompilerContext compilerContext) {
-
+    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, CompilerContext compilerContext) throws Exception {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -188,22 +213,32 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, CompilerContext compilerContext) throws Exception {
-
+        final char character = characterLiteral.getValue();
+        compilerContext.addCommand(new VM.IConst(character));
     }
 
     @Override
     public void visitStringLiteral(AST.StringLiteral stringLiteral, CompilerContext compilerContext) throws Exception {
-
+        final String string = stringLiteral.getValue();
+        final int length = string.length();
+        compilerContext.addCommand(new VM.IConst(length));
+        compilerContext.addCommand(new VM.NewArray());
+        for (int i = 0; i < length; ++i) {
+            compilerContext.addCommand(new VM.Dup());
+            compilerContext.addCommand(new VM.IConst(i));
+            compilerContext.addCommand(new VM.IConst(string.charAt(i)));
+            compilerContext.addCommand(new VM.IAStore());
+        }
     }
 
     @Override
     public void visitNullLiteral(AST.NullLiteral nullLiteral, CompilerContext compilerContext) throws Exception {
-
+        compilerContext.addCommand(new VM.AConstNull());
     }
 
     @Override
     public void visitUnaryExpression(AST.UnaryExpression unaryExpression, CompilerContext compilerContext) throws Exception {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override

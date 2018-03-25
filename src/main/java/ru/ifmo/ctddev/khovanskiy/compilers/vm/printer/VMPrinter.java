@@ -20,13 +20,33 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     }
 
     @Override
-    public void visitStore(VM.Store store, PrinterContext context) throws IOException {
-        context.printLine("store " + store.getName());
+    public void visitComment(VM.Comment comment, PrinterContext context) throws Exception {
+        context.printLine("// " + comment.getText());
     }
 
     @Override
-    public void visitLoad(VM.Load load, PrinterContext context) throws IOException {
+    public void visitDup(VM.Dup dup, PrinterContext context) throws IOException {
+        context.printLine("dup");
+    }
+
+    @Override
+    public void visitIStore(VM.IStore store, PrinterContext context) throws IOException {
+        context.printLine("i_store " + store.getName());
+    }
+
+    @Override
+    public void visitIAStore(VM.IAStore iaStore, PrinterContext context) throws IOException {
+        context.printLine("i_a_store");
+    }
+
+    @Override
+    public void visitILoad(VM.ILoad load, PrinterContext context) throws IOException {
         context.printLine("load " + load.getName());
+    }
+
+    @Override
+    public void visitIALoad(VM.IALoad iaLoad, PrinterContext context) throws IOException {
+        context.printLine("i_a_load");
     }
 
     @Override
@@ -40,8 +60,13 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     }
 
     @Override
+    public void visitAConstNull(VM.AConstNull aConstNull, PrinterContext context) throws IOException {
+        context.printLine("a_const_null");
+    }
+
+    @Override
     public void visitIConst(VM.IConst iConst, PrinterContext context) throws IOException {
-        context.printLine("iconst " + iConst.getValue());
+        context.printLine("i_const " + iConst.getValue());
     }
 
     @Override
@@ -61,7 +86,7 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
 
     @Override
     public void visitIReturn(VM.IReturn iReturn, PrinterContext context) throws IOException {
-        context.printLine("ireturn");
+        context.printLine("i_return");
     }
 
     @Override
@@ -77,6 +102,11 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     @Override
     public void visitIfFalse(VM.IfFalse ifFalse, PrinterContext context) throws IOException {
         context.printLine("if_false " + ifFalse.getLabel());
+    }
+
+    @Override
+    public void visitNewArray(VM.NewArray newArray, PrinterContext context) throws IOException {
+        context.printLine("new_array");
     }
 
     @Override

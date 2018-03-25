@@ -1,3 +1,5 @@
-int main() {
-	prinf(5);
+#include "stdio.h"
+
+int main(int argc, char** args) {
+	printf(5);
 }

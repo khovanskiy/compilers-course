@@ -17,6 +17,14 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
 
     @Override
     public void visitCommand(VM vm, C c) throws Exception {
+        if (vm instanceof VM.Comment) {
+            visitComment((VM.Comment) vm, c);
+            return;
+        }
+        if (vm instanceof VM.Dup) {
+            visitDup((VM.Dup) vm, c);
+            return;
+        }
         if (vm instanceof VM.Store) {
             visitStore((VM.Store) vm, c);
             return;
@@ -57,13 +65,60 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
             visitAbstractReturn((VM.AbstractReturn) vm, c);
             return;
         }
+        if (vm instanceof VM.NewArray) {
+            visitNewArray((VM.NewArray) vm, c);
+            return;
+        }
         visitUnknown(vm, c);
+    }
+
+    @Override
+    public void visitComment(VM.Comment comment, C c) throws Exception {
+    }
+
+    @Override
+    public void visitStore(VM.Store store, C c) throws Exception {
+        if (store instanceof VM.IStore) {
+            visitIStore((VM.IStore) store, c);
+            return;
+        }
+        if (store instanceof VM.IAStore) {
+            visitIAStore((VM.IAStore) store, c);
+            return;
+        }
+        throw new IllegalStateException();
+    }
+
+    @Override
+    public void visitLoad(VM.Load load, C c) throws Exception {
+        if (load instanceof VM.ILoad) {
+            visitILoad((VM.ILoad) load, c);
+            return;
+        }
+        if (load instanceof VM.IALoad) {
+            visitIALoad((VM.IALoad) load, c);
+            return;
+        }
+        throw new IllegalStateException();
     }
 
     @Override
     public void visitConst(VM.Const command, C c) throws Exception {
         if (command instanceof VM.IConst) {
             visitIConst((VM.IConst) command, c);
+            return;
+        }
+        if (command instanceof VM.AConst) {
+            visitAConst((VM.AConst) command, c);
+            return;
+        }
+        throw new IllegalStateException();
+    }
+
+    @Override
+    public void visitAConst(VM.AConst command, C c) throws Exception {
+        if (command instanceof VM.AConstNull) {
+            visitAConstNull((VM.AConstNull) command, c);
             return;
         }
         throw new IllegalStateException();

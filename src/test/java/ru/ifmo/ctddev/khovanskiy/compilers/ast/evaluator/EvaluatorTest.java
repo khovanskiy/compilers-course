@@ -51,7 +51,7 @@ public class EvaluatorTest extends BaseTest {
         });
     }
 
-    private Map<Pointer, Symbol> defineExternalFunctions(final Reader reader, final Writer writer) {
+    public static Map<Pointer, Symbol> defineExternalFunctions(final Reader reader, final Writer writer) {
         final Map<Pointer, Symbol> externals = new HashMap<>();
         // base aliases
         externals.put(new VariablePointer("true"), new Symbol<>(1));

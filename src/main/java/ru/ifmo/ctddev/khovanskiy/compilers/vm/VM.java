@@ -2,26 +2,62 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm;
 
 import lombok.Getter;
 import lombok.ToString;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.NullPointer;
 
 public abstract class VM {
     @Getter
     @ToString
-    public static class Store extends VM {
+    public static class Comment extends VM {
+        private final String text;
+
+        public Comment(String text) {
+            this.text = text;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class Dup extends VM {
+    }
+
+    @Getter
+    @ToString
+    public abstract static class Store extends VM {
+    }
+
+    @Getter
+    @ToString
+    public static class IStore extends Store {
         private final String name;
 
-        public Store(String name) {
+        public IStore(String name) {
             this.name = name;
         }
     }
 
     @Getter
     @ToString
-    public static class Load extends VM {
+    public static class IAStore extends Store {
+    }
+
+    @Getter
+    @ToString
+    public abstract static class Load extends VM {
+    }
+
+    @Getter
+    @ToString
+    public static class ILoad extends Load {
         private final String name;
 
-        public Load(String name) {
+        public ILoad(String name) {
             this.name = name;
         }
+    }
+
+    @Getter
+    @ToString
+    public static class IALoad extends Load {
     }
 
     public static class Push extends VM {
@@ -41,6 +77,22 @@ public abstract class VM {
 
         protected Const(T value) {
             this.value = value;
+        }
+    }
+
+    @Getter
+    @ToString
+    public abstract static class AConst<T> extends Const<T> {
+        protected AConst(T value) {
+            super(value);
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class AConstNull extends AConst<NullPointer> {
+        public AConstNull() {
+            super(null);
         }
     }
 
@@ -148,6 +200,12 @@ public abstract class VM {
         public IfFalse(String label) {
             this.label = label;
         }
+    }
+
+    @Getter
+    @ToString
+    public static class NewArray extends VM {
+
     }
 
 //    @Getter

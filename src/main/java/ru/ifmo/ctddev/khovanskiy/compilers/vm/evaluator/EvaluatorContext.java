@@ -1,7 +1,6 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.evaluator;
 
 import lombok.Getter;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.ExternalFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Pointer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
@@ -15,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Getter
 public class EvaluatorContext {
-    private final Map<String, ExternalFunction> externalFunctions;
+    private final Map<Pointer, Symbol> externals;
     private final List<Integer> heap = new ArrayList<>();
     private final Map<String, Integer> labels = new HashMap<>();
     private final Stack<Symbol> stack = new Stack<>();
@@ -23,8 +22,8 @@ public class EvaluatorContext {
     private final AtomicInteger pointer = new AtomicInteger(0);
     private final Stack<Scope> scopes = new Stack<>();
 
-    public EvaluatorContext(final Map<String, ExternalFunction> externalFunctions) {
-        this.externalFunctions = externalFunctions;
+    public EvaluatorContext(final Map<Pointer, Symbol> externals) {
+        this.externals = externals;
         this.scopes.push(new Scope());
     }
 
@@ -33,12 +32,19 @@ public class EvaluatorContext {
     }
 
     public void put(Pointer pointer, Symbol<?> symbol) {
+        if (externals.containsKey(pointer)) {
+            throw new IllegalStateException();
+        }
         final Scope scope = getScope();
         scope.getData().put(pointer, symbol);
     }
 
     @SuppressWarnings("unchecked")
     public <T> Symbol<T> get(final Pointer pointer, final Class<T> clazz) {
+        final Symbol external = externals.get(pointer);
+        if (external != null) {
+            return external;
+        }
         for (int i = scopes.size() - 1; i >= 0; --i) {
             final Scope scope = scopes.get(i);
             final Symbol symbol = scope.getData().get(pointer);

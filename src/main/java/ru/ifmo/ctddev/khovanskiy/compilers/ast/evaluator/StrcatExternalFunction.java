@@ -1,16 +1,20 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StrcatExternalFunction extends ExternalFunction {
     @Override
+    @SuppressWarnings("unchecked")
     public Object evaluate(Object... args) {
         assert args.length == 2;
-        assert args[0] != null && char[].class.isInstance(args[0]);
-        assert args[1] != null && char[].class.isInstance(args[1]);
-        char[] lhs = (char[]) args[0];
-        char[] rhs = (char[]) args[1];
-        char[] result = new char[lhs.length + rhs.length];
-        System.arraycopy(lhs, 0, result, 0, lhs.length);
-        System.arraycopy(rhs, 0, result, lhs.length, rhs.length);
+        assert args[0] != null && List.class.isInstance(args[0]);
+        assert args[1] != null && List.class.isInstance(args[1]);
+        List lhs = (List) args[0];
+        List rhs = (List) args[1];
+        List result = new ArrayList(lhs.size() + rhs.size());
+        result.addAll(lhs);
+        result.addAll(rhs);
         return result;
     }
 }

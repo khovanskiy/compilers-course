@@ -312,12 +312,19 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
 
     @Override
     public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, EvaluatorContext context) throws Exception {
-        context.setResult(new Symbol<>(characterLiteral.getValue()));
+        final char character = characterLiteral.getValue();
+        context.setResult(new Symbol<>((int) character));
     }
 
     @Override
     public void visitStringLiteral(AST.StringLiteral stringLiteral, EvaluatorContext context) {
-        context.setResult(new Symbol<>(stringLiteral.getValue().toCharArray()));
+        final String string = stringLiteral.getValue();
+        final int length = string.length();
+        final List<Integer> array = new ArrayList<>(length);
+        for (int i = 0; i < length; ++i) {
+            array.add((int) string.charAt(i));
+        }
+        context.setResult(new Symbol<>(array));
     }
 
     @Override

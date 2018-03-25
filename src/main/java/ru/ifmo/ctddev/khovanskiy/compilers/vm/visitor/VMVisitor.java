@@ -12,15 +12,31 @@ public interface VMVisitor<C> {
 
     void visitCommand(VM vm, C c) throws Exception;
 
+    void visitComment(VM.Comment comment, C c) throws Exception;
+
+    void visitDup(VM.Dup dup, C c) throws Exception;
+
     void visitStore(VM.Store store, C c) throws Exception;
 
+    void visitIStore(VM.IStore iStore, C c) throws Exception;
+
+    void visitIAStore(VM.IAStore iaStore, C c) throws Exception;
+
     void visitLoad(VM.Load load, C c) throws Exception;
+
+    void visitILoad(VM.ILoad iLoad, C c) throws Exception;
+
+    void visitIALoad(VM.IALoad iaLoad, C c) throws Exception;
 
     void visitLabel(VM.Label label, C c) throws Exception;
 
     void visitBinOp(VM.BinOp binOp, C c) throws Exception;
 
     void visitConst(VM.Const vmConst, C c) throws Exception;
+
+    void visitAConst(VM.AConst aConst, C c) throws Exception;
+
+    void visitAConstNull(VM.AConstNull aConstNull, C c) throws Exception;
 
     void visitIConst(VM.IConst iConst, C c) throws Exception;
 
@@ -41,6 +57,8 @@ public interface VMVisitor<C> {
     void visitIfTrue(VM.IfTrue ifTrue, C c) throws Exception;
 
     void visitIfFalse(VM.IfFalse ifFalse, C c) throws Exception;
+
+    void visitNewArray(VM.NewArray newArray, C c) throws Exception;
 
     void visitUnknown(VM vm, C c) throws Exception;
 }

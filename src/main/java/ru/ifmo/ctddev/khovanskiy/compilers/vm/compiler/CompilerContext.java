@@ -34,6 +34,9 @@ public class CompilerContext {
         private RenameHolder renameHolder = new RenameHolder();
 
         public String rename(String name) {
+            if ("true".equals(name) || "false".equals(name)) {
+                return name;
+            }
             return this.renameHolder.rename(name);
         }
     }
