@@ -1,5 +1,6 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler;
 
+import lombok.extern.slf4j.Slf4j;
 import ru.ifmo.ctddev.khovanskiy.compilers.Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
@@ -8,6 +9,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements Compiler<AST.CompilationUnit, CompilerContext> {
     @Override
     public CompilerContext compile(AST.CompilationUnit ast) throws Exception {
@@ -18,7 +20,19 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitFunctionDefinition(AST.FunctionDefinition functionDefinition, CompilerContext compilerContext) throws Exception {
-
+        final String endLabel = compilerContext.getNextLabel();
+        compilerContext.addCommand(new VM.Goto(endLabel));
+        compilerContext.addCommand(new VM.Label(functionDefinition.getName()));
+        compilerContext.getScopes().push(new CompilerContext.Scope());
+        for (int i = 0; i < functionDefinition.getVariables().size(); ++i) {
+            AST.VariableDefinition variableDefinition = functionDefinition.getVariables().get(i);
+            String oldName = variableDefinition.getName();
+            String newName = compilerContext.getScope().rename(oldName);
+            log.info("Function {}: rename variable {} to {}", functionDefinition.getName(), oldName, newName);
+        }
+        visitCompoundStatement(functionDefinition.getCompoundStatement(), compilerContext);
+        compilerContext.getScopes().pop();
+        compilerContext.addCommand(new VM.Label(endLabel));
     }
 
     @Override
@@ -77,7 +91,8 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitReturnStatement(AST.ReturnStatement returnStatement, CompilerContext compilerContext) throws Exception {
-
+        visitExpression(returnStatement.getExpression(), compilerContext);
+        compilerContext.addCommand(new VM.IReturn());
     }
 
     @Override
@@ -134,7 +149,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
             AST.Expression expression = arguments.get(i);
             visitExpression(expression, compilerContext);
         }
-        compilerContext.addCommand(new VM.InvokeStatic(functionCall.getName()));
+        compilerContext.addCommand(new VM.InvokeStatic(functionCall.getName(), functionCall.getArguments().size()));
     }
 
     @Override
@@ -144,7 +159,9 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) throws Exception {
-        compilerContext.addCommand(new VM.Load(variableAccessExpression.getName()));
+        String oldName = variableAccessExpression.getName();
+        String newName = compilerContext.getScope().rename(oldName);
+        compilerContext.addCommand(new VM.Load(newName));
     }
 
     @Override
@@ -154,7 +171,9 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) {
-        compilerContext.addCommand(new VM.Store(variableAccessExpression.getName()));
+        String oldName = variableAccessExpression.getName();
+        String newName = compilerContext.getScope().rename(oldName);
+        compilerContext.addCommand(new VM.Store(newName));
     }
 
     @Override

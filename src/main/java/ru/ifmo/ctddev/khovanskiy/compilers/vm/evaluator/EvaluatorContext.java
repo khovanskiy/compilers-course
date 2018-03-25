@@ -4,6 +4,7 @@ import lombok.Getter;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.ExternalFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Pointer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -78,6 +79,7 @@ public class EvaluatorContext {
 
     @Getter
     public static class Scope {
+        private final RenameHolder renameHolder = new RenameHolder();
         private final Map<Pointer, Symbol> data;
 
         public Scope() {
@@ -86,6 +88,14 @@ public class EvaluatorContext {
 
         public Scope(Map<Pointer, Symbol> data) {
             this.data = data;
+        }
+
+        public String rename(String name) {
+            return this.renameHolder.rename(name);
+        }
+
+        public String nextName() {
+            return this.renameHolder.nextName();
         }
     }
 }

@@ -7,6 +7,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,9 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
     public void visitLoad(VM.Load load, EvaluatorContext context) throws Exception {
         final VariablePointer pointer = new VariablePointer(load.getName());
         final Symbol<Object> symbol = context.get(pointer, Object.class);
+        if (symbol == null) {
+            throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
+        }
         context.getStack().add(symbol);
     }
 
@@ -81,27 +85,44 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
         final ExternalFunction function = context.getExternalFunctions().get(invokeExternal.getName());
         final Object[] args = new Object[invokeExternal.getArgumentsCount()];
         for (int i = 0; i < invokeExternal.getArgumentsCount(); ++i) {
+            if (context.getStack().isEmpty()) {
+                throw new IllegalStateException(String.format("Missing argument for function \"%s\" external invoke", invokeExternal.getName()));
+            }
             args[i] = context.getStack().pop().getValue();
         }
         final Object value = function.evaluate(args);
-        context.getStack().push(new Symbol<>(value));
+        if (value != null) {
+            context.getStack().push(new Symbol<>(value));
+        }
     }
 
     @Override
     public void visitInvokeStatic(VM.InvokeStatic call, EvaluatorContext context) {
         int position = context.getPosition();
+        EvaluatorContext.Scope scope = new EvaluatorContext.Scope();
+        List<String> names = new ArrayList<>(call.getArgumentsCount());
+        for (int i = 0; i < call.getArgumentsCount(); ++i) {
+            names.add(scope.nextName());
+        }
+        for (int i = call.getArgumentsCount() - 1; i >= 0; --i) {
+            final Symbol symbol = context.getStack().pop();
+            scope.getData().put(new VariablePointer(names.get(i)), symbol);
+        }
+        context.getScopes().push(scope);
         context.getCallStack().push(position);
         context.gotoLabel(call.getName());
     }
 
     @Override
     public void visitReturn(VM.Return vmReturn, EvaluatorContext context) {
+        context.getScopes().pop();
         int position = context.getCallStack().pop();
         context.setPosition(position);
     }
 
     @Override
     public void visitIReturn(VM.IReturn iReturn, EvaluatorContext context) {
+        context.getScopes().pop();
         Symbol<Integer> value = context.getStack().pop();
         int position = context.getCallStack().pop();
         context.setPosition(position);

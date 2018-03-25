@@ -83,9 +83,11 @@ public abstract class VM {
     @ToString
     public static class InvokeStatic extends AbstractInvoke {
         private final String name;
+        private final int argumentsCount;
 
-        public InvokeStatic(String name) {
+        public InvokeStatic(String name, int argumentsCount) {
             this.name = name;
+            this.argumentsCount = argumentsCount;
         }
     }
 

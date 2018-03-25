@@ -51,7 +51,7 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
 
     @Override
     public void visitInvokeStatic(VM.InvokeStatic invokeStatic, PrinterContext context) throws IOException {
-        context.printLine("invoke_static " + invokeStatic.getName());
+        context.printLine("invoke_static " + invokeStatic.getName() + "," + invokeStatic.getArgumentsCount());
     }
 
     @Override

@@ -24,7 +24,7 @@ public abstract class BaseTest {
         final List<File> outputFiles = new ArrayList<>();
         try {
             final Stream<Path> testsStream = getTests(inputDirectoryFile);
-            testsStream.forEach(path -> {
+            testsStream.skip(26).limit(1).forEach(path -> {
                 final String testName = path.getFileName().toString().split("\\.")[0];
                 log.info("Run test \"{}\"", path);
                 final File outputDirectoryFile = new File(outputDirectory);

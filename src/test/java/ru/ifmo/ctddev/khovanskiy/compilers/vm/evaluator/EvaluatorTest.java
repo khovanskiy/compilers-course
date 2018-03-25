@@ -67,6 +67,7 @@ public class EvaluatorTest extends BaseTest {
             commands.add(new VM.IReturn());
 
             commands.add(new VM.Label("write"));
+            commands.add(new VM.Load("v0"));
             commands.add(new VM.InvokeExternal("write", 1));
             commands.add(new VM.Return());
 
