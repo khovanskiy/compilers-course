@@ -42,6 +42,18 @@ public abstract class AbstractX86Visitor<C> implements X86Visitor<C> {
             visitRet((X86.Ret) command, c);
             return;
         }
+        if (command instanceof X86.Jmp) {
+            visitJmp((X86.Jmp) command, c);
+            return;
+        }
+        if (command instanceof X86.Jnz) {
+            visitJnz((X86.Jnz) command, c);
+            return;
+        }
+        if (command instanceof X86.Jz) {
+            visitJz((X86.Jz) command, c);
+            return;
+        }
         if (command instanceof X86.AddL) {
             visitAdd((X86.AddL) command, c);
             return;

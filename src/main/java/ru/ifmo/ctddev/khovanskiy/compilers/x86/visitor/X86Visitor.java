@@ -35,6 +35,12 @@ public interface X86Visitor<C> {
 
     void visitRet(X86.Ret ret, C c) throws Exception;
 
+    void visitJmp(X86.Jmp jmp, C c) throws Exception;
+
+    void visitJnz(X86.Jnz jnz, C c) throws Exception;
+
+    void visitJz(X86.Jz jz, C c) throws Exception;
+
     void visitAdd(X86.AddL addL, C c) throws Exception;
 
     void visitSub(X86.SubL subL, C c) throws Exception;

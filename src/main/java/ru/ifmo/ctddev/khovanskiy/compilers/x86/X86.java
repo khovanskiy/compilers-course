@@ -70,6 +70,36 @@ public abstract class X86 {
 
     @Getter
     @ToString
+    public static class Jmp extends X86 {
+        private final String label;
+
+        public Jmp(String label) {
+            this.label = label;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class Jz extends X86 {
+        private final String label;
+
+        public Jz(String label) {
+            this.label = label;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class Jnz extends X86 {
+        private final String label;
+
+        public Jnz(String label) {
+            this.label = label;
+        }
+    }
+
+    @Getter
+    @ToString
     public static class AddL extends X86 {
         private final MemoryAccess source;
         private final Register destination;

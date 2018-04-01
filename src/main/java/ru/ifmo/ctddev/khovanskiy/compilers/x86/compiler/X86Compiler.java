@@ -112,7 +112,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitBinOp(VM.BinOp binOp, CompilerContext compilerContext) throws Exception {
+    public void visitBinOp(VM.BinOp binOp, CompilerContext compilerContext) {
         switch (binOp.getOperator()) {
             case "+":
                 visitIAdd(compilerContext);
@@ -132,6 +132,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
             case "&&":
                 visitLogical(binOp, compilerContext);
                 return;
+            case "!!":
             case "||":
                 visitLogical(binOp, compilerContext);
                 return;
@@ -245,8 +246,6 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     private void visitLogical(VM.BinOp binOp, CompilerContext compilerContext) {
-        MemoryAccess rhs = compilerContext.pop();
-        MemoryAccess lhs = compilerContext.pop();
         /*
         Binop ("^", eax, eax);
         Binop ("^", edx, edx);
@@ -257,6 +256,8 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         Binop (op, edx, eax);
         Mov (eax, s)
          */
+        MemoryAccess rhs = compilerContext.pop();
+        MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
         compilerContext.getScope().addCommand(new X86.XorL(Edx.INSTANCE, Edx.INSTANCE));
         compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), lhs));
@@ -267,10 +268,11 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         switch (binOp.getOperator()) {
             case "&&":
                 visitAnd(compilerContext);
-                return;
+                break;
+            case "!!":
             case "||":
                 visitOr(compilerContext);
-                return;
+                break;
         }
         final MemoryAccess result = compilerContext.allocate();
         compilerContext.getScope().move(Eax.INSTANCE, result);
@@ -323,18 +325,22 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitGoto(VM.Goto vmGoto, CompilerContext compilerContext) throws Exception {
-
+    public void visitGoto(VM.Goto vmGoto, CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.Jmp(vmGoto.getLabel()));
     }
 
     @Override
-    public void visitIfTrue(VM.IfTrue ifTrue, CompilerContext compilerContext) throws Exception {
-
+    public void visitIfTrue(VM.IfTrue ifTrue, CompilerContext compilerContext) {
+        final MemoryAccess memoryAccess = compilerContext.pop();
+        compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), memoryAccess));
+        compilerContext.getScope().addCommand(new X86.Jnz(ifTrue.getLabel()));
     }
 
     @Override
-    public void visitIfFalse(VM.IfFalse ifFalse, CompilerContext compilerContext) throws Exception {
-
+    public void visitIfFalse(VM.IfFalse ifFalse, CompilerContext compilerContext) {
+        final MemoryAccess memoryAccess = compilerContext.pop();
+        compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), memoryAccess));
+        compilerContext.getScope().addCommand(new X86.Jz(ifFalse.getLabel()));
     }
 
     @Override

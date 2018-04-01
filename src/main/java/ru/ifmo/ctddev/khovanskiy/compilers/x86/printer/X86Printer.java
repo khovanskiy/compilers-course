@@ -85,6 +85,21 @@ public class X86Printer extends AbstractX86Visitor<X86PrinterContext> {
     }
 
     @Override
+    public void visitJmp(X86.Jmp jmp, X86PrinterContext context) throws IOException {
+        context.printLine("\tjmp " + jmp.getLabel());
+    }
+
+    @Override
+    public void visitJnz(X86.Jnz jnz, X86PrinterContext context) throws IOException {
+        context.printLine("\tjnz " + jnz.getLabel());
+    }
+
+    @Override
+    public void visitJz(X86.Jz jz, X86PrinterContext context) throws IOException {
+        context.printLine("\tjz " + jz.getLabel());
+    }
+
+    @Override
     public void visitAdd(X86.AddL addL, X86PrinterContext context) throws Exception {
         context.append("\taddl ");
         visitMemoryAccess(addL.getSource(), context);
