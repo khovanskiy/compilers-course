@@ -44,17 +44,22 @@ public class CompilerContext {
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Argument is already allocated on stack");
         }
-        final StackPosition stackPosition = new StackPosition(4 + id * 4);
+        final StackPosition stackPosition = new StackPosition(4 + (id + 1) * 4);
         variable.setStackPosition(stackPosition);
     }
 
+    /**
+     * https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
+     *
+     * @param id
+     */
     public void registerVariable(int id) {
         final Scope scope = getScope();
         final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable());
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Variable is already allocated on stack");
         }
-        final StackPosition stackPosition = new StackPosition(-scope.getAllocated());
+        final StackPosition stackPosition = new StackPosition(-4 - scope.getAllocated());
         scope.setAllocated(scope.getAllocated() + 4);
         variable.setStackPosition(stackPosition);
     }
@@ -65,7 +70,7 @@ public class CompilerContext {
             return stack.peek();
         } else {
             final Scope scope = getScope();
-            stack.push(new StackPosition(-scope.getAllocated()));
+            stack.push(new StackPosition(-4 - scope.getAllocated()));
             scope.setAllocated(scope.getAllocated() + 4);
             return stack.peek();
         }
@@ -112,7 +117,7 @@ public class CompilerContext {
         final Scope scope = getScope();
         final Variable variable = scope.getVariables().get(id);
         if (variable == null) {
-            throw new IllegalStateException("Unknown variable");
+            throw new IllegalStateException(String.format("Unknown variable \"%d\"", id));
         }
 //        if (variable.getRegister() != null) {
 //

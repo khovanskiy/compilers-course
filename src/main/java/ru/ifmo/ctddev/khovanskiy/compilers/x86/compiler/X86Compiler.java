@@ -62,7 +62,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
             compilerContext.registerArgument(i);
         }
         for (int i = 0; i < localVariablesCount; ++i) {
-            compilerContext.registerVariable(i);
+            compilerContext.registerVariable(i + argumentsCount);
         }
         super.visitFunction(function, compilerContext);
         final CompilerContext.Scope scope = compilerContext.leaveScope();
@@ -73,7 +73,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
         compilerContext.addCommand(new X86.MovL(Ebp.INSTANCE, Esp.INSTANCE));
         compilerContext.addCommand(new X86.PopL(Ebp.INSTANCE));
-        compilerContext.addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
+//        compilerContext.addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
         compilerContext.addCommand(new X86.Ret());
     }
 
@@ -299,7 +299,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
     @Override
     public void visitInvokeStatic(VM.InvokeStatic call, CompilerContext compilerContext) throws Exception {
-        assert call.getArgumentsCount() == compilerContext.getStack().size();
+        assert call.getArgumentsCount() <= compilerContext.getStack().size();
         for (int i = 0; i < call.getArgumentsCount(); ++i) {
             MemoryAccess memoryAccess = compilerContext.pop();
             compilerContext.getScope().addCommand(new X86.PushL(memoryAccess));
@@ -316,12 +316,13 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
     @Override
     public void visitReturn(VM.Return vmReturn, CompilerContext compilerContext) throws Exception {
-
+        compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
     }
 
     @Override
     public void visitIReturn(VM.IReturn iReturn, CompilerContext compilerContext) throws Exception {
-
+        final MemoryAccess temporary = compilerContext.pop();
+        compilerContext.getScope().move(temporary, Eax.INSTANCE);
     }
 
     @Override
