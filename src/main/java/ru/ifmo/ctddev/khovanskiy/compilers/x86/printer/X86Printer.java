@@ -5,6 +5,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.x86.StackPosition;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86Program;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register8;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.visitor.AbstractX86Visitor;
 
 import java.io.IOException;
@@ -48,6 +49,11 @@ public class X86Printer extends AbstractX86Visitor<X86PrinterContext> {
 
     @Override
     public void visitRegister(Register register, X86PrinterContext context) throws IOException {
+        context.append("%" + register.getClass().getSimpleName().toLowerCase());
+    }
+
+    @Override
+    public void visitRegister8(Register8 register, X86PrinterContext context) throws IOException {
         context.append("%" + register.getClass().getSimpleName().toLowerCase());
     }
 
@@ -118,12 +124,95 @@ public class X86Printer extends AbstractX86Visitor<X86PrinterContext> {
     }
 
     @Override
+    public void visitCmp(X86.Cmp cmp, X86PrinterContext context) throws Exception {
+        context.append("\tcmp ");
+        visitMemoryAccess(cmp.getLeft(), context);
+        context.append(", ");
+        visitMemoryAccess(cmp.getRight(), context);
+        context.append("\n");
+    }
+
+    @Override
+    public void visitAndL(X86.AndL andL, X86PrinterContext context) throws Exception {
+        context.append("\tandl ");
+        visitMemoryAccess(andL.getLeft(), context);
+        context.append(", ");
+        visitMemoryAccess(andL.getRight(), context);
+        context.append("\n");
+    }
+
+    @Override
+    public void visitOrL(X86.OrL orL, X86PrinterContext context) throws Exception {
+        context.append("\torl ");
+        visitMemoryAccess(orL.getLeft(), context);
+        context.append(", ");
+        visitMemoryAccess(orL.getRight(), context);
+        context.append("\n");
+    }
+
+    @Override
     public void visitXorL(X86.XorL xorL, X86PrinterContext context) throws Exception {
         context.append("\txorl ");
-        visitMemoryAccess(xorL.getSource(), context);
+        visitMemoryAccess(xorL.getLeft(), context);
         context.append(", ");
-        visitMemoryAccess(xorL.getDestination(), context);
+        visitMemoryAccess(xorL.getRight(), context);
         context.append("\n");
+    }
+
+//    private void visitSet(String suffix, Register8 register8, X86PrinterContext context) throws Exception {
+//        context.append("\tset" + suffix + " ");
+//        visitMemoryAccess(register8, context);
+//        context.append("\n");
+//    }
+
+    @Override
+    public void visitSet(X86.Set command, X86PrinterContext context) throws Exception {
+        context.append("\tset");
+        super.visitSet(command, context);
+        context.append(" ");
+        visitMemoryAccess(command.getRegister(), context);
+        context.append("\n");
+    }
+
+    @Override
+    public void visitSetG(X86.SetG setG, X86PrinterContext context) throws Exception {
+        context.append("g");
+//        visitSet("g", setG.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetGe(X86.SetGe setGe, X86PrinterContext context) throws Exception {
+        context.append("ge");
+//        visitSet("ge", setGe.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetL(X86.SetL setL, X86PrinterContext context) throws Exception {
+        context.append("l");
+//        visitSet("l", setL.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetLe(X86.SetLe setLe, X86PrinterContext context) throws Exception {
+        context.append("le");
+//        visitSet("le", setLe.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetE(X86.SetE setE, X86PrinterContext context) throws Exception {
+        context.append("e");
+//        visitSet("e", setE.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetNe(X86.SetNe setNe, X86PrinterContext context) throws Exception {
+        context.append("ne");
+//        visitSet("ne", setNe.getRegister(), context);
+    }
+
+    @Override
+    public void visitSetNz(X86.SetNz setNz, X86PrinterContext context) throws IOException {
+        context.append("nz");
     }
 
     @Override

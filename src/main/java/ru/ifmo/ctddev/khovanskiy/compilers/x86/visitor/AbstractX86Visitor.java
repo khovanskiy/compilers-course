@@ -2,6 +2,7 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86.visitor;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.*;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register8;
 
 /**
  * @author Victor Khovanskiy
@@ -61,8 +62,16 @@ public abstract class AbstractX86Visitor<C> implements X86Visitor<C> {
             visitCltd((X86.Cltd) command, c);
             return;
         }
-        if (command instanceof X86.XorL) {
-            visitXorL((X86.XorL) command, c);
+        if (command instanceof X86.Cmp) {
+            visitCmp((X86.Cmp) command, c);
+            return;
+        }
+        if (command instanceof X86.Logical) {
+            visitLogical((X86.Logical) command, c);
+            return;
+        }
+        if (command instanceof X86.Set) {
+            visitSet((X86.Set) command, c);
             return;
         }
         visitUnknown(command, c);
@@ -74,6 +83,10 @@ public abstract class AbstractX86Visitor<C> implements X86Visitor<C> {
             visitRegister((Register) memoryAccess, c);
             return;
         }
+        if (memoryAccess instanceof Register8) {
+            visitRegister8((Register8) memoryAccess, c);
+            return;
+        }
         if (memoryAccess instanceof StackPosition) {
             visitStackPosition((StackPosition) memoryAccess, c);
             return;
@@ -82,6 +95,56 @@ public abstract class AbstractX86Visitor<C> implements X86Visitor<C> {
             visitImmediate((Immediate) memoryAccess, c);
             return;
         }
-        throw new UnsupportedOperationException();
+        throw new IllegalStateException("Unknown memory access instruction");
+    }
+
+    @Override
+    public void visitLogical(X86.Logical command, C c) throws Exception {
+        if (command instanceof X86.AndL) {
+            visitAndL((X86.AndL) command, c);
+            return;
+        }
+        if (command instanceof X86.OrL) {
+            visitOrL((X86.OrL) command, c);
+            return;
+        }
+        if (command instanceof X86.XorL) {
+            visitXorL((X86.XorL) command, c);
+            return;
+        }
+        throw new IllegalStateException("Unknown logical instruction");
+    }
+
+    @Override
+    public void visitSet(X86.Set command, C c) throws Exception {
+        if (command instanceof X86.SetG) {
+            visitSetG((X86.SetG) command, c);
+            return;
+        }
+        if (command instanceof X86.SetGe) {
+            visitSetGe((X86.SetGe) command, c);
+            return;
+        }
+        if (command instanceof X86.SetL) {
+            visitSetL((X86.SetL) command, c);
+            return;
+        }
+        if (command instanceof X86.SetLe) {
+            visitSetLe((X86.SetLe) command, c);
+            return;
+        }
+        if (command instanceof X86.SetE) {
+            visitSetE((X86.SetE) command, c);
+            return;
+        }
+        if (command instanceof X86.SetNe) {
+            visitSetNe((X86.SetNe) command, c);
+            return;
+        }
+        if (command instanceof X86.SetNz) {
+            visitSetNz((X86.SetNz) command, c);
+            return;
+        }
+        throw new IllegalStateException("Unknown set instruction");
     }
 }

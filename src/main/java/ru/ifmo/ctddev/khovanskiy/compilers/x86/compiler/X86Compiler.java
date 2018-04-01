@@ -10,10 +10,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.MemoryAccess;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86Program;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Eax;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Ebp;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Edx;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Esp;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
 
 /**
  * @author Victor Khovanskiy
@@ -132,8 +129,14 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
             case "%":
                 visitIRem(compilerContext);
                 return;
+            case "&&":
+                visitLogical(binOp, compilerContext);
+                return;
+            case "||":
+                visitLogical(binOp, compilerContext);
+                return;
             default:
-                throw new UnsupportedOperationException(binOp.getOperator());
+                visitCompare(binOp, compilerContext);
         }
     }
 
@@ -182,6 +185,103 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.getScope().addCommand(new X86.IDivL(rhs));
         final MemoryAccess result = compilerContext.allocate();
         compilerContext.getScope().move(Edx.INSTANCE, result);
+    }
+
+    private void visitCompare(VM.BinOp binOp, CompilerContext compilerContext) {
+        //Mov (y, eax); Binop ("^", edx, edx); Binop ("cmp", x, eax); Set (op, "%dl"); Mov (edx, s)
+        MemoryAccess rhs = compilerContext.pop();
+        MemoryAccess lhs = compilerContext.pop();
+        compilerContext.getScope().move(lhs, Eax.INSTANCE);
+        compilerContext.getScope().addCommand(new X86.XorL(Edx.INSTANCE, Edx.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.Cmp(rhs, Eax.INSTANCE));
+        switch (binOp.getOperator()) {
+            case ">":
+                visitG(compilerContext);
+                break;
+            case ">=":
+                visitGe(compilerContext);
+                break;
+            case "<":
+                visitL(compilerContext);
+                break;
+            case "<=":
+                visitLe(compilerContext);
+                break;
+            case "==":
+                visitEq(compilerContext);
+                break;
+            case "!=":
+                visitNe(compilerContext);
+                break;
+            default:
+                throw new UnsupportedOperationException(binOp.getOperator());
+        }
+        final MemoryAccess result = compilerContext.allocate();
+        compilerContext.getScope().move(Edx.INSTANCE, result);
+    }
+
+    private void visitG(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetG(Dl.INSTANCE));
+    }
+
+    private void visitGe(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetGe(Dl.INSTANCE));
+    }
+
+    private void visitL(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetL(Dl.INSTANCE));
+    }
+
+    private void visitLe(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetLe(Dl.INSTANCE));
+    }
+
+    private void visitEq(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetE(Dl.INSTANCE));
+    }
+
+    private void visitNe(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.SetNe(Dl.INSTANCE));
+    }
+
+    private void visitLogical(VM.BinOp binOp, CompilerContext compilerContext) {
+        MemoryAccess rhs = compilerContext.pop();
+        MemoryAccess lhs = compilerContext.pop();
+        /*
+        Binop ("^", eax, eax);
+        Binop ("^", edx, edx);
+        Binop ("cmp", L 0, y);
+        Set ("nz", "%dl");
+        Binop ("cmp", L 0, x);
+        Set ("nz", "%al");
+        Binop (op, edx, eax);
+        Mov (eax, s)
+         */
+        compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.XorL(Edx.INSTANCE, Edx.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), lhs));
+        compilerContext.getScope().addCommand(new X86.SetNz(Dl.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), rhs));
+        compilerContext.getScope().addCommand(new X86.SetNz(Al.INSTANCE));
+
+        switch (binOp.getOperator()) {
+            case "&&":
+                visitAnd(compilerContext);
+                return;
+            case "||":
+                visitOr(compilerContext);
+                return;
+        }
+        final MemoryAccess result = compilerContext.allocate();
+        compilerContext.getScope().move(Eax.INSTANCE, result);
+    }
+
+    private void visitAnd(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.AndL(Edx.INSTANCE, Eax.INSTANCE));
+    }
+
+    private void visitOr(CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.OrL(Edx.INSTANCE, Eax.INSTANCE));
     }
 
     @Override
