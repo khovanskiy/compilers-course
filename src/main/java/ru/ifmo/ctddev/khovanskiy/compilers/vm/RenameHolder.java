@@ -9,19 +9,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 1.0.0
  */
 public class RenameHolder {
-    private Map<String, String> remapping = new HashMap<>();
+    private Map<String, Integer> remapping = new HashMap<>();
     private AtomicInteger variableIds = new AtomicInteger(0);
 
-    public String rename(String name) {
-        String newName = remapping.get(name);
-        if (newName == null) {
-            newName = nextName();
-            remapping.put(name, newName);
+    public int rename(String name) {
+        Integer id = remapping.get(name);
+        if (id == null) {
+            id = nextName();
+            remapping.put(name, id);
         }
-        return newName;
+        return id;
     }
 
-    public String nextName() {
-        return "v" + variableIds.getAndIncrement();
+    public int nextName() {
+        return variableIds.getAndIncrement();
     }
 }

@@ -28,10 +28,10 @@ public abstract class VM {
     @Getter
     @ToString
     public static class IStore extends Store {
-        private final String name;
+        private final int name;
 
-        public IStore(String name) {
-            this.name = name;
+        public IStore(int id) {
+            this.name = id;
         }
     }
 
@@ -48,10 +48,10 @@ public abstract class VM {
     @Getter
     @ToString
     public static class ILoad extends Load {
-        private final String name;
+        private final int name;
 
-        public ILoad(String name) {
-            this.name = name;
+        public ILoad(int id) {
+            this.name = id;
         }
     }
 
@@ -121,18 +121,6 @@ public abstract class VM {
 
     @Getter
     @ToString
-    public static class InvokeExternal extends AbstractInvoke {
-        private final String name;
-        private final int argumentsCount;
-
-        public InvokeExternal(String name, int argumentsCount) {
-            this.name = name;
-            this.argumentsCount = argumentsCount;
-        }
-    }
-
-    @Getter
-    @ToString
     public static class InvokeStatic extends AbstractInvoke {
         private final String name;
         private final int argumentsCount;
@@ -169,6 +157,18 @@ public abstract class VM {
 
         public Label(String name) {
             this.name = name;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class Begin extends VM {
+        private final String name;
+        private final int argumentsCount;
+
+        public Begin(String name, int argumentsCount) {
+            this.name = name;
+            this.argumentsCount = argumentsCount;
         }
     }
 

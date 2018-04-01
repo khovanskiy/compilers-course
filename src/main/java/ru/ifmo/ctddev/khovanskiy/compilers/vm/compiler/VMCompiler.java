@@ -7,7 +7,9 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements Compiler<AST.CompilationUnit, CompilerContext> {
@@ -19,20 +21,35 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
+    public void visitCompilationUnit(AST.CompilationUnit compilationUnit, CompilerContext compilerContext) throws Exception {
+        List<AST.SingleStatement> statements = compilationUnit.getCompoundStatement().getStatements();
+        List<AST.FunctionDefinition> functions = statements.stream()
+                .filter(AST.FunctionDefinition.class::isInstance)
+                .map(AST.FunctionDefinition.class::cast)
+                .collect(Collectors.toList());
+        List<AST.SingleStatement> mainStatements = statements.stream().filter(s -> !AST.FunctionDefinition.class.isInstance(s))
+                .collect(Collectors.toList());
+        functions.add(new AST.FunctionDefinition("main", Collections.emptyList(), new AST.CompoundStatement(mainStatements)));
+        for (AST.FunctionDefinition f : functions) {
+            visitFunctionDefinition(f, compilerContext);
+        }
+    }
+
+    @Override
     public void visitFunctionDefinition(AST.FunctionDefinition functionDefinition, CompilerContext compilerContext) throws Exception {
-        final String endLabel = compilerContext.getNextLabel();
-        compilerContext.addCommand(new VM.Goto(endLabel));
-        compilerContext.addCommand(new VM.Label(functionDefinition.getName()));
+        compilerContext.registerFunction(functionDefinition.getName(), functionDefinition.getVariables().size());
+
+//        compilerContext.addCommand(new VM.Label(functionDefinition.getName()));
         compilerContext.getScopes().push(new CompilerContext.Scope());
         for (int i = 0; i < functionDefinition.getVariables().size(); ++i) {
             AST.VariableDefinition variableDefinition = functionDefinition.getVariables().get(i);
-            String oldName = variableDefinition.getName();
-            String newName = compilerContext.getScope().rename(oldName);
-            log.info("Function {}: rename variable {} to {}", functionDefinition.getName(), oldName, newName);
+            String name = variableDefinition.getName();
+            final int id = compilerContext.getScope().rename(name);
+            log.info("Function {}: rename variable {} to {}", functionDefinition.getName(), name, id);
         }
         visitCompoundStatement(functionDefinition.getCompoundStatement(), compilerContext);
         compilerContext.getScopes().pop();
-        compilerContext.addCommand(new VM.Label(endLabel));
+
     }
 
     @Override
@@ -45,11 +62,11 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
         if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
             String oldName = variableAccessExpression.getName();
-            String newName = compilerContext.getScope().rename(oldName);
+            final int id = compilerContext.getScope().rename(oldName);
             // expression
             visitExpression(assignmentStatement.getExpression(), compilerContext);
             //
-            compilerContext.addCommand(new VM.IStore(newName));
+            compilerContext.addCommand(new VM.IStore(id));
         } else {
             AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
             visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
@@ -184,9 +201,15 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
 
     @Override
     public void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) throws Exception {
-        String oldName = variableAccessExpression.getName();
-        String newName = compilerContext.getScope().rename(oldName);
-        compilerContext.addCommand(new VM.ILoad(newName));
+        String name = variableAccessExpression.getName();
+        if ("true".equals(name)) {
+            compilerContext.addCommand(new VM.IConst(1));
+        } else if ("false".equals(name)) {
+            compilerContext.addCommand(new VM.IConst(0));
+        } else {
+            final int id = compilerContext.getScope().rename(name);
+            compilerContext.addCommand(new VM.ILoad(id));
+        }
     }
 
     @Override

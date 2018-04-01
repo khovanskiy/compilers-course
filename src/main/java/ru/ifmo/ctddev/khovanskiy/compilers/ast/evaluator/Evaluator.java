@@ -297,7 +297,7 @@ public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
 //            return context.get(pointer, Object.class);
 //        } else if (pointer instanceof ArrayPointer) {
 //            final ArrayPointer arrayPointer = (ArrayPointer) pointer;
-//            Symbol symbol = getValue(arrayPointer.getPointer(), context);
+//            Symbol symbol = getValue(arrayPointer.getPosition(), context);
 //            int[] array = int[].class.cast(symbol.getValue());
 //            int index = arrayPointer.getIndex();
 //            return new Symbol<>(array[index]);

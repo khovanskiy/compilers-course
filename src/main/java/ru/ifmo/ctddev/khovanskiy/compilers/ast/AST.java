@@ -7,7 +7,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * @author victor
+ * @author Victor Khovanskiy
+ * @since 1.0.0
  */
 @ToString
 public abstract class AST {

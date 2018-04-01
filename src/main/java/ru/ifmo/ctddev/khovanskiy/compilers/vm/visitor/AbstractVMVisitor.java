@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 
 /**
@@ -10,7 +11,14 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     @Override
     public void visitProgram(VMProgram vmProgram, C c) throws Exception {
-        for (VM command : vmProgram.getCommands()) {
+        for (VMFunction function : vmProgram.getFunctions()) {
+            visitFunction(function, c);
+        }
+    }
+
+    @Override
+    public void visitFunction(VMFunction function, C c) throws Exception {
+        for (VM command : function.getCommands()) {
             visitCommand(command, c);
         }
     }
@@ -126,10 +134,6 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
 
     @Override
     public void visitAbstractInvoke(VM.AbstractInvoke command, C c) throws Exception {
-        if (command instanceof VM.InvokeExternal) {
-            visitInvokeExternal((VM.InvokeExternal) command, c);
-            return;
-        }
         if (command instanceof VM.InvokeStatic) {
             visitInvokeStatic((VM.InvokeStatic) command, c);
             return;

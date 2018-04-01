@@ -3,6 +3,7 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler;
 import lombok.Getter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 
 import java.util.Stack;
@@ -18,8 +19,12 @@ public class CompilerContext {
         this.scopes.add(new Scope());
     }
 
-    public void addCommand(VM command) {
-        vmProgram.getCommands().add(command);
+    public void addCommand(final VM command) {
+        vmProgram.getFunctions().get(vmProgram.getFunctions().size() - 1).getCommands().add(command);
+    }
+
+    public void registerFunction(final String name, int size) {
+        vmProgram.getFunctions().add(new VMFunction(name, size));
     }
 
     public String getNextLabel() {
@@ -33,10 +38,7 @@ public class CompilerContext {
     public static class Scope {
         private RenameHolder renameHolder = new RenameHolder();
 
-        public String rename(String name) {
-            if ("true".equals(name) || "false".equals(name)) {
-                return name;
-            }
+        public int rename(String name) {
             return this.renameHolder.rename(name);
         }
     }

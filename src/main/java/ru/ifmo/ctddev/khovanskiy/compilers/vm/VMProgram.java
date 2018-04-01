@@ -11,13 +11,13 @@ import java.util.List;
  */
 @Getter
 public class VMProgram {
-    private final List<VM> commands;
+    private final List<VMFunction> functions;
 
     public VMProgram() {
-        this.commands = new ArrayList<>();
+        this.functions = new ArrayList<>();
     }
 
-    public VMProgram(List<VM> commands) {
-        this.commands = commands;
+    public VMProgram(List<VMFunction> functions) {
+        this.functions = functions;
     }
 }

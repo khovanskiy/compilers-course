@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.printer;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
 
@@ -13,10 +14,20 @@ import java.io.IOException;
 public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     @Override
     public void visitProgram(VMProgram vmProgram, PrinterContext context) throws Exception {
-        for (VM command : vmProgram.getCommands()) {
-            visitCommand(command, context);
+        for (VMFunction function : vmProgram.getFunctions()) {
+            visitFunction(function, context);
         }
         context.flush();
+    }
+
+    @Override
+    public void visitFunction(VMFunction function, PrinterContext context) throws Exception {
+        context.append("begin " + function.getName() + "\n");
+        context.setLineNumber(0);
+        for (VM command : function.getCommands()) {
+            visitCommand(command, context);
+        }
+        context.append("end\n\n");
     }
 
     @Override
@@ -31,7 +42,7 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
 
     @Override
     public void visitIStore(VM.IStore store, PrinterContext context) throws IOException {
-        context.printLine("i_store " + store.getName());
+        context.printLine("i_store v" + store.getName());
     }
 
     @Override
@@ -41,7 +52,7 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
 
     @Override
     public void visitILoad(VM.ILoad load, PrinterContext context) throws IOException {
-        context.printLine("load " + load.getName());
+        context.printLine("load v" + load.getName());
     }
 
     @Override
@@ -67,11 +78,6 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     @Override
     public void visitIConst(VM.IConst iConst, PrinterContext context) throws IOException {
         context.printLine("i_const " + iConst.getValue());
-    }
-
-    @Override
-    public void visitInvokeExternal(VM.InvokeExternal invokeExternal, PrinterContext context) throws IOException {
-        context.printLine("invoke_external " + invokeExternal.getName() + "," + invokeExternal.getArgumentsCount());
     }
 
     @Override

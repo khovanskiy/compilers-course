@@ -15,10 +15,19 @@ public class PrinterContext {
         this.writer = writer;
     }
 
-    public Writer printLine(String s) throws IOException {
+    public PrinterContext append(String s) throws IOException {
+        this.writer.append(s);
+        return this;
+    }
+
+    public PrinterContext printLine(String s) throws IOException {
         this.writer.write(lineNumber + ":\t" + s + "\n");
         ++lineNumber;
-        return this.writer;
+        return this;
+    }
+
+    public void setLineNumber(int lineNumber) {
+        this.lineNumber = lineNumber;
     }
 
     public void flush() throws IOException {

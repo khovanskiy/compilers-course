@@ -6,7 +6,6 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author Victor Khovanskiy
@@ -16,10 +15,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class EvaluatorContext {
     private final Map<Pointer, Symbol> externals;
     private final List<Integer> heap = new ArrayList<>();
-    private final Map<String, Integer> labels = new HashMap<>();
+    private final Map<String, Position> labels = new HashMap<>();
     private final Stack<Symbol> stack = new Stack<>();
-    private final Stack<Integer> callStack = new Stack<>();
-    private final AtomicInteger pointer = new AtomicInteger(0);
+    private final Stack<Position> callStack = new Stack<>();
+    private Position position;
     private final Stack<Scope> scopes = new Stack<>();
 
     public EvaluatorContext(final Map<Pointer, Symbol> externals) {
@@ -58,29 +57,30 @@ public class EvaluatorContext {
         return null;
     }
 
-    public void setLabels(final Map<String, Integer> labels) {
+    public void setLabels(final Map<String, Position> labels) {
         this.labels.clear();
         this.labels.putAll(labels);
     }
 
     public void gotoLabel(String name) {
-        Integer position = labels.get(name);
+        Position position = labels.get(name);
         if (position == null) {
             throw new IllegalStateException(String.format("Unknown position of label \"%s\"", name));
         }
-        pointer.set(position);
+        this.position = position;
     }
 
-    public int getPosition() {
-        return pointer.get();
+    public Position getPosition() {
+        return position;
     }
 
-    public void setPosition(int position) {
-        pointer.set(position);
+    public void setPosition(final Position position) {
+        this.position = position;
     }
 
-    public int nextPosition() {
-        return pointer.incrementAndGet();
+    public Position nextPosition() {
+        this.position = new Position(this.position.getFunctionName(), this.position.getLineNumber() + 1);
+        return position;
     }
 
     @Getter
@@ -96,11 +96,11 @@ public class EvaluatorContext {
             this.data = data;
         }
 
-        public String rename(String name) {
+        public int rename(String name) {
             return this.renameHolder.rename(name);
         }
 
-        public String nextName() {
+        public int nextName() {
             return this.renameHolder.nextName();
         }
     }

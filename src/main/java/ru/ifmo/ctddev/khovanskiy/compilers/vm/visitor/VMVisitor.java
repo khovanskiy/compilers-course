@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 
 /**
@@ -9,6 +10,8 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
  */
 public interface VMVisitor<C> {
     void visitProgram(VMProgram vmProgram, C c) throws Exception;
+
+    void visitFunction(VMFunction function, C c) throws Exception;
 
     void visitCommand(VM vm, C c) throws Exception;
 
@@ -41,8 +44,6 @@ public interface VMVisitor<C> {
     void visitIConst(VM.IConst iConst, C c) throws Exception;
 
     void visitAbstractInvoke(VM.AbstractInvoke abstractInvoke, C c) throws Exception;
-
-    void visitInvokeExternal(VM.InvokeExternal invokeExternal, C c) throws Exception;
 
     void visitInvokeStatic(VM.InvokeStatic call, C c) throws Exception;
 

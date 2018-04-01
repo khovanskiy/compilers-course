@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.vm.evaluator;
+package ru.ifmo.ctddev.khovanskiy.compilers.x86;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -8,8 +8,12 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.CompilerContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.VMCompiler;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.evaluator.VMEvaluator;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.PrinterContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.VMPrinter;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler.X86Compiler;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86Printer;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86PrinterContext;
 
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -24,16 +28,16 @@ public class EvaluatorTest extends BaseTest {
     public void testCore() {
         evaluate("./compiler-tests/core");
     }
-
-    @Test
-    public void testDeepExpressions() {
-        evaluate("./compiler-tests/deep-expressions");
-    }
-
-    @Test
-    public void testExpressions() {
-        evaluate("./compiler-tests/expressions");
-    }
+//
+//    @Test
+//    public void testDeepExpressions() {
+//        evaluate("./compiler-tests/deep-expressions");
+//    }
+//
+//    @Test
+//    public void testExpressions() {
+//        evaluate("./compiler-tests/expressions");
+//    }
 
     @Test
     @Ignore
@@ -57,6 +61,12 @@ public class EvaluatorTest extends BaseTest {
             final Map<Pointer, Symbol> externals = ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.EvaluatorTest.defineExternalFunctions(reader, writer);
 
             VMEvaluator.evaluate(newProgram, externals);
+
+            X86Compiler x86Compiler = new X86Compiler();
+            final X86Program x86Program = x86Compiler.compile(newProgram);
+            System.out.println("// ----------------------------------------");
+            X86Printer x86Printer = new X86Printer();
+            x86Printer.visitProgram(x86Program, new X86PrinterContext(consoleWriter));
         });
     }
 }

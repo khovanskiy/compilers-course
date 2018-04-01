@@ -2,41 +2,68 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.evaluator;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.*;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
 
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
-public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
-    @Override
-    public void visitProgram(VMProgram vmProgram, EvaluatorContext context) throws Exception {
-        final List<VM> commands = vmProgram.getCommands();
-        final Map<String, Integer> labels = new HashMap<>();
-        for (int i = 0; i < commands.size(); i++) {
-            VM vm = commands.get(i);
-            if (vm instanceof VM.Label) {
-                String name = ((VM.Label) vm).getName();
-                int newLine = i;
-                labels.compute(name, (key, oldLine) -> {
-                    if (oldLine != null) {
-                        throw new IllegalStateException(String.format("Label \"%s\" is duplicated at lines: %d and %d", name, oldLine, newLine));
-                    }
-                    return newLine;
-                });
+public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
+    public void evaluate(final VMProgram vmProgram, final Map<Pointer, Symbol> symbols) throws Exception {
+        final List<VMFunction> functions = vmProgram.getFunctions();
+        final Map<String, Position> labels = new HashMap<>();
+        for (final VMFunction function : functions) {
+            registerLabel(labels, function, function.getName(), 0);
+            final List<VM> commands = function.getCommands();
+            for (int i = 0; i < commands.size(); i++) {
+                VM vm = commands.get(i);
+                if (vm instanceof VM.Label) {
+                    String name = ((VM.Label) vm).getName();
+                    registerLabel(labels, function, name, i);
+                }
             }
         }
+        final EvaluatorContext context = new EvaluatorContext(symbols);
         context.setLabels(labels);
-        context.gotoLabel("main");
+        visitProgram(vmProgram, context);
+    }
 
-        int position = context.getPosition();
-        while (position < commands.size()) {
-            VM command = commands.get(position);
+    protected void registerLabel(final Map<String, Position> labels, VMFunction function, String name, int newLine) {
+        labels.compute(name, (key, oldPosition) -> {
+            final Position newPosition = new Position(function.getName(), newLine);
+            if (oldPosition != null) {
+                throw new IllegalStateException(String.format("Label \"%s\" is duplicated at lines: %d and %d", name, oldPosition.getLineNumber(), newLine));
+            }
+            return newPosition;
+        });
+    }
+
+    @Override
+    public void visitProgram(VMProgram vmProgram, EvaluatorContext context) throws Exception {
+
+        Map<String, VMFunction> vmFunctionMap = vmProgram.getFunctions().stream()
+                .collect(Collectors.toMap(VMFunction::getName, Function.identity(), (u, v) -> {
+                    throw new IllegalStateException();
+                }));
+
+        context.gotoLabel("main");
+        while (true) {
+            final VMFunction function = vmFunctionMap.get(context.getPosition().getFunctionName());
+            final List<VM> commands = function.getCommands();
+            if (context.getPosition().getLineNumber() >= commands.size()) {
+                break;
+            }
+            VM command = commands.get(context.getPosition().getLineNumber());
             visitCommand(command, context);
-            position = context.nextPosition();
+            if (!VM.AbstractInvoke.class.isInstance(command) && !VM.AbstractReturn.class.isInstance(command)) {
+                context.nextPosition();
+            }
         }
     }
 
@@ -47,9 +74,13 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     public void visitIStore(VM.IStore store, EvaluatorContext context) throws Exception {
-        final VariablePointer pointer = new VariablePointer(store.getName());
+        final VariablePointer pointer = new VariablePointer(getVariableName(store.getName()));
         final Symbol<Object> symbol = context.getStack().pop();
         context.put(pointer, symbol);
+    }
+
+    private String getVariableName(int index) {
+        return "v" + index;
     }
 
     @Override
@@ -67,7 +98,7 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     public void visitILoad(VM.ILoad load, EvaluatorContext context) throws Exception {
-        final VariablePointer pointer = new VariablePointer(load.getName());
+        final VariablePointer pointer = new VariablePointer(getVariableName(load.getName()));
         final Symbol<Object> symbol = context.get(pointer, Object.class);
         if (symbol == null) {
             throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
@@ -113,25 +144,6 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitInvokeExternal(VM.InvokeExternal invokeExternal, EvaluatorContext context) throws Exception {
-        final Symbol<ExternalFunction> function = context.get(new FunctionPointer(invokeExternal.getName()), ExternalFunction.class);
-        if (function == null) {
-            throw new IllegalStateException(String.format("The external executor for function \"%s\" is not found", invokeExternal.getName()));
-        }
-        final Object[] args = new Object[invokeExternal.getArgumentsCount()];
-        for (int i = invokeExternal.getArgumentsCount() - 1; i >= 0; --i) {
-            if (context.getStack().isEmpty()) {
-                throw new IllegalStateException(String.format("Missing argument for function \"%s\" external invoke", invokeExternal.getName()));
-            }
-            args[i] = context.getStack().pop().getValue();
-        }
-        final Object value = function.getValue().evaluate(args);
-        if (value != null) {
-            context.getStack().push(new Symbol<>(value));
-        }
-    }
-
-    @Override
     public void visitInvokeStatic(VM.InvokeStatic call, EvaluatorContext context) throws Exception {
         final Symbol<ExternalFunction> function = context.get(new FunctionPointer(call.getName()), ExternalFunction.class);
         if (function != null) {
@@ -146,19 +158,21 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
             if (value != null) {
                 context.getStack().push(new Symbol<>(value));
             }
+            context.nextPosition();
         } else {
-            int position = context.getPosition();
+            final Position position = context.getPosition();
+            final Position nextPosition = new Position(position.getFunctionName(), position.getLineNumber() + 1);
             EvaluatorContext.Scope scope = new EvaluatorContext.Scope();
             List<String> names = new ArrayList<>(call.getArgumentsCount());
             for (int i = 0; i < call.getArgumentsCount(); ++i) {
-                names.add(scope.nextName());
+                names.add(getVariableName(scope.nextName()));
             }
             for (int i = call.getArgumentsCount() - 1; i >= 0; --i) {
                 final Symbol symbol = context.getStack().pop();
                 scope.getData().put(new VariablePointer(names.get(i)), symbol);
             }
             context.getScopes().push(scope);
-            context.getCallStack().push(position);
+            context.getCallStack().push(nextPosition);
             context.gotoLabel(call.getName());
         }
     }
@@ -166,7 +180,7 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
     @Override
     public void visitReturn(VM.Return vmReturn, EvaluatorContext context) {
         context.getScopes().pop();
-        int position = context.getCallStack().pop();
+        final Position position = context.getCallStack().pop();
         context.setPosition(position);
     }
 
@@ -174,7 +188,7 @@ public class Evaluator extends AbstractVMVisitor<EvaluatorContext> {
     public void visitIReturn(VM.IReturn iReturn, EvaluatorContext context) {
         context.getScopes().pop();
         Symbol<Integer> value = context.getStack().pop();
-        int position = context.getCallStack().pop();
+        final Position position = context.getCallStack().pop();
         context.setPosition(position);
         context.getStack().push(value);
     }
