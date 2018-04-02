@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-public class EvaluatorTest extends BaseTest {
+public class ASTEvaluatorTest extends BaseTest {
 
     @Test
     public void testCore() {
@@ -37,17 +37,16 @@ public class EvaluatorTest extends BaseTest {
         evaluate("./compiler-tests/performance");
     }
 
-
     protected void evaluate(String s) {
-        runTests(s, "./target/temp", (testName, ast, reader, writer) -> {
+        runTests(s, "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));
+            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
 
-            final Map<Pointer, Symbol> externals = defineExternalFunctions(reader, writer);
+            final Map<Pointer, Symbol> externals = defineExternalFunctions(testCase.getReader(), testCase.getWriter());
             final EvaluatorContext context = new EvaluatorContext(externals);
-            Evaluator evaluator = new Evaluator();
-            evaluator.visitCompilationUnit(ast, context);
+            final ASTEvaluator evaluator = new ASTEvaluator();
+            evaluator.visitCompilationUnit(testCase.getAst(), context);
         });
     }
 

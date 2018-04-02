@@ -129,7 +129,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
         assert context.getStack().size() >= 2 : "Stack does not have 2 values at least: " + Objects.toString(context.getStack());
         final Symbol<Object> second = context.getStack().pop();
         final Symbol<Object> first = context.getStack().pop();
-        final Object value = ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Evaluator.evaluateBinaryExpression(binOp.getOperator(), first.getValue(), second.getValue());
+        final Object value = ASTEvaluator.evaluateBinaryExpression(binOp.getOperator(), first.getValue(), second.getValue());
         context.getStack().push(new Symbol<>(value));
     }
 

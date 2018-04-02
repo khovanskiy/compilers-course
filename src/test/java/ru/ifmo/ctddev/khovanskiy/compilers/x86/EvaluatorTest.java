@@ -4,20 +4,14 @@ import org.junit.Ignore;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
 import ru.ifmo.ctddev.khovanskiy.compilers.SystemService;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Pointer;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.CompilerContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.VMCompiler;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.evaluator.VMEvaluator;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.PrinterContext;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.VMPrinter;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler.X86Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86Printer;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86PrinterContext;
 
 import java.io.*;
-import java.util.Map;
 
 /**
  * @author Victor Khovanskiy
@@ -28,16 +22,16 @@ public class EvaluatorTest extends BaseTest {
     public void testCore() {
         evaluate("./compiler-tests/core");
     }
-//
-//    @Test
-//    public void testDeepExpressions() {
-//        evaluate("./compiler-tests/deep-expressions");
-//    }
-//
-//    @Test
-//    public void testExpressions() {
-//        evaluate("./compiler-tests/expressions");
-//    }
+
+    @Test
+    public void testDeepExpressions() {
+        evaluate("./compiler-tests/deep-expressions");
+    }
+
+    @Test
+    public void testExpressions() {
+        evaluate("./compiler-tests/expressions");
+    }
 
     @Test
     @Ignore
@@ -48,23 +42,13 @@ public class EvaluatorTest extends BaseTest {
     private SystemService systemService = new SystemService();
 
     protected void evaluate(String s) {
-        runTests(s, "./target/temp", (testName, ast, reader, writer) -> {
+        runTests(s, "./target/temp", (testCase) -> {
             final VMCompiler compiler = new VMCompiler();
-            final CompilerContext compilerContext = compiler.compile(ast);
-
-            final VMPrinter printer = new VMPrinter();
-            final Writer consoleWriter = new PrintWriter(System.out);
+            final CompilerContext compilerContext = compiler.compile(testCase.getAst());
 
             final VMProgram newProgram = compilerContext.getVmProgram();
-            printer.visitProgram(newProgram, new PrinterContext(consoleWriter));
-
-            VMEvaluator VMEvaluator = new VMEvaluator();
-
-            final Map<Pointer, Symbol> externals = ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.EvaluatorTest.defineExternalFunctions(reader, writer);
-
-//            VMEvaluator.evaluate(newProgram, externals);
-
-            File asmFile = new File("./target/temp", testName + ".s");
+            File asmFile = new File("./target/temp", testCase.getTestName() + ".s");
+            testCase.getTemporaryFiles().add(asmFile);
             try (FileWriter asmWriter = new FileWriter(asmFile)) {
                 X86Compiler x86Compiler = new X86Compiler();
                 final X86Program x86Program = x86Compiler.compile(newProgram);
@@ -73,7 +57,9 @@ public class EvaluatorTest extends BaseTest {
                 x86Printer.visitProgram(x86Program, new X86PrinterContext(asmWriter));
             }
 
-            systemService.executeForRead(new String[]{"./runtime/compile.sh", "./runtime", "./target/temp/" + testName}, (inputStream -> {
+            File objectFile = new File("./target/temp", testCase.getTestName() + ".o");
+            testCase.getTemporaryFiles().add(objectFile);
+            systemService.executeForRead(new String[]{"./runtime/compile.sh", "./runtime", "./target/temp/" + testCase.getTestName()}, (inputStream -> {
                 try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
                     while (compilationReader.ready()) {
                         System.out.println(compilationReader.readLine());
@@ -84,19 +70,21 @@ public class EvaluatorTest extends BaseTest {
                 return "";
             }));
 
-            systemService.executeForRead(new String[]{"./runtime/run.sh", "./target/temp/" + testName, "./compiler-tests/core/" + testName + ".input"}, (inputStream -> {
+            File executableFile = new File("./target/temp", testCase.getTestName());
+            testCase.getTemporaryFiles().add(executableFile);
+            systemService.executeForRead(new String[]{"./runtime/run.sh", "./target/temp/" + testCase.getTestName(), testCase.getInputFile().toString()}, (inputStream -> {
                 try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
                     while (compilationReader.ready()) {
                         String line = compilationReader.readLine();
 //                        System.out.println("#" + line);
-                        writer.write(line + "\n");
+                        testCase.getWriter().write(line + "\n");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
                 return "";
             }));
-            writer.flush();
+            testCase.getWriter().flush();
         });
     }
 }

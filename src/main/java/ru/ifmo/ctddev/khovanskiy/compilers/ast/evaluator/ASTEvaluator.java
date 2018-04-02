@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
-public class Evaluator extends AbstractASTVisitor<EvaluatorContext> {
+public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     @Override
     public void visitCompoundStatement(AST.CompoundStatement compoundStatement, EvaluatorContext context) throws Exception {
         for (AST.SingleStatement singleStatement : compoundStatement.getStatements()) {

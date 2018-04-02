@@ -8,7 +8,10 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageLexer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageParser;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -48,7 +51,9 @@ public abstract class BaseTest {
                 try (final FileReader reader = new FileReader(inputFile);
                      final FileWriter writer = new FileWriter(outputFile)) {
                     final AST.CompilationUnit ast = parseAST(testFile);
-                    consumer.run(testName, ast, reader, writer);
+                    TestCase testCase = new TestCase(testName, ast, reader, writer, inputFile);
+                    consumer.run(testCase);
+                    outputFiles.addAll(testCase.getTemporaryFiles());
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -108,6 +113,6 @@ public abstract class BaseTest {
 
     @FunctionalInterface
     public interface TestCaseConsumer {
-        void run(String testName, AST.CompilationUnit ast, Reader reader, Writer writer) throws Exception;
+        void run(TestCase testCase) throws Exception;
     }
 }
