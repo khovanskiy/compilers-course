@@ -60,7 +60,7 @@ public class EvaluatorTest extends BaseTest {
 
             final Map<Pointer, Symbol> externals = ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.EvaluatorTest.defineExternalFunctions(reader, writer);
 
-            VMEvaluator.evaluate(newProgram, externals);
+//            VMEvaluator.evaluate(newProgram, externals);
 
             X86Compiler x86Compiler = new X86Compiler();
             final X86Program x86Program = x86Compiler.compile(newProgram);

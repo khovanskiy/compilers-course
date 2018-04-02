@@ -107,10 +107,28 @@ public class CompilerContext {
             registers.push((Register) memoryAccess);
         }
         if (memoryAccess instanceof StackPosition) {
-            final Scope scope = getScope();
-            scope.setAllocated(scope.getAllocated() - 4);
+            StackPosition current = (StackPosition) memoryAccess;
+            popStackPosition(current);
         }
         return memoryAccess;
+    }
+
+    private void popStackPosition(final StackPosition current) {
+        final Scope scope = getScope();
+        if (!stack.isEmpty()) {
+            if (stack.peek() instanceof StackPosition) {
+                final StackPosition previous = (StackPosition) stack.peek();
+                final boolean isDuplicate = previous.getPosition() == current.getPosition();
+                if (isDuplicate) {
+                    return;
+                }
+            }
+        }
+        scope.setAllocated(scope.getAllocated() - 4);
+    }
+
+    public void dup() {
+        stack.push(stack.peek());
     }
 
     public MemoryAccess get(int id) {

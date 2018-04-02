@@ -17,4 +17,9 @@ public class StackPosition extends MemoryAccess {
         this.position = position;
         this.register = Ebp.INSTANCE;
     }
+
+    public StackPosition(int position, Register register) {
+        this.position = position;
+        this.register = register;
+    }
 }

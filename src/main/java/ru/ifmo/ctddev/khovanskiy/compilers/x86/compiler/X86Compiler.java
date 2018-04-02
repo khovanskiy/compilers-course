@@ -6,10 +6,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.MemoryAccess;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86Program;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.*;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
 
 /**
@@ -26,17 +23,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         return new X86Program(compilerContext.getCommands());
     }
 
-    protected void verify(CompilerContext compilerContext) {
-        int count = 0;
-        for (X86 command : compilerContext.getCommands()) {
-            if (command instanceof X86.PushL) {
-                ++count;
-            } else if (command instanceof X86.PopL) {
-                --count;
-            }
-        }
-        assert count == 0;
-    }
+    private static final int ARRAY_OFFSET = 4;
 
     @Override
     public void visitFunction(final VMFunction function, final CompilerContext compilerContext) throws Exception {
@@ -77,9 +64,16 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.addCommand(new X86.Ret());
     }
 
-    @Override
-    public void visitDup(VM.Dup dup, CompilerContext compilerContext) throws Exception {
-
+    protected void verify(CompilerContext compilerContext) {
+        int count = 0;
+        for (X86 command : compilerContext.getCommands()) {
+            if (command instanceof X86.PushL) {
+                ++count;
+            } else if (command instanceof X86.PopL) {
+                --count;
+            }
+        }
+//        assert count == 0;
     }
 
     @Override
@@ -90,20 +84,37 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitIAStore(VM.IAStore iaStore, CompilerContext compilerContext) throws Exception {
-
+    public void visitDup(VM.Dup dup, CompilerContext compilerContext) throws Exception {
+        compilerContext.dup();
     }
 
     @Override
-    public void visitILoad(VM.ILoad iLoad, CompilerContext compilerContext) throws Exception {
+    public void visitIAStore(VM.IAStore iaStore, CompilerContext compilerContext) throws Exception {
+        final MemoryAccess value = compilerContext.pop();
+        final MemoryAccess index = compilerContext.pop();
+        final MemoryAccess array = compilerContext.pop();
+        compilerContext.getScope().move(index, Edx.INSTANCE);
+        compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(4), Edx.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.AddL(array, Edx.INSTANCE));
+        compilerContext.getScope().move(value, new StackPosition(ARRAY_OFFSET, Edx.INSTANCE));
+    }
+
+    @Override
+    public void visitILoad(VM.ILoad iLoad, CompilerContext compilerContext) {
         final MemoryAccess variable = compilerContext.get(iLoad.getName());
         final MemoryAccess temporary = compilerContext.allocate();
         compilerContext.getScope().move(variable, temporary);
     }
 
     @Override
-    public void visitIALoad(VM.IALoad iaLoad, CompilerContext compilerContext) throws Exception {
-
+    public void visitIALoad(VM.IALoad iaLoad, CompilerContext compilerContext) {
+        final MemoryAccess index = compilerContext.pop();
+        final MemoryAccess array = compilerContext.pop();
+        compilerContext.getScope().move(index, Edx.INSTANCE);
+        compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(4), Edx.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.AddL(array, Edx.INSTANCE));
+        final MemoryAccess temporary = compilerContext.allocate();
+        compilerContext.getScope().move(new StackPosition(ARRAY_OFFSET, Edx.INSTANCE), temporary);
     }
 
     @Override
@@ -246,16 +257,6 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     private void visitLogical(VM.BinOp binOp, CompilerContext compilerContext) {
-        /*
-        Binop ("^", eax, eax);
-        Binop ("^", edx, edx);
-        Binop ("cmp", L 0, y);
-        Set ("nz", "%dl");
-        Binop ("cmp", L 0, x);
-        Set ("nz", "%al");
-        Binop (op, edx, eax);
-        Mov (eax, s)
-         */
         MemoryAccess rhs = compilerContext.pop();
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
@@ -288,7 +289,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
     @Override
     public void visitAConstNull(VM.AConstNull aConstNull, CompilerContext compilerContext) throws Exception {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -346,7 +347,19 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
     @Override
     public void visitNewArray(VM.NewArray newArray, CompilerContext compilerContext) throws Exception {
+        final MemoryAccess memoryAccess = compilerContext.pop();
+        compilerContext.getScope().move(memoryAccess, Eax.INSTANCE);
+        compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(4), Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.AddL(new Immediate(ARRAY_OFFSET), Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.PushL(Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.Call("malloc"));
+        compilerContext.getScope().addCommand(new X86.AddL(new Immediate(4), Esp.INSTANCE));
 
+        compilerContext.getScope().move(memoryAccess, Edx.INSTANCE);
+        compilerContext.getScope().move(Edx.INSTANCE, new StackPosition(0, Eax.INSTANCE));
+
+        final MemoryAccess result = compilerContext.allocate();
+        compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
     @Override
