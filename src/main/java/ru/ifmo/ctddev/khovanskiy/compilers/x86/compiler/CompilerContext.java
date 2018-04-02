@@ -2,13 +2,14 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler;
 
 import lombok.Getter;
 import lombok.Setter;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.MemoryAccess;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.StackPosition;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Eax;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * @author Victor Khovanskiy
@@ -18,9 +19,15 @@ import java.util.*;
 public class CompilerContext {
     private final List<X86> commands = new ArrayList<>();
     private final Stack<Scope> scopes = new Stack<>();
-    //private final Map<Register, RegisterEntry> registers = new HashMap<>();
-    private final Stack<Register> registers = new Stack<>();
+    private final List<RegisterEntry> registers = new ArrayList<>();
     private final Stack<MemoryAccess> stack = new Stack<>();
+
+    public CompilerContext() {
+        registers.add(new RegisterEntry(Ebx.INSTANCE));
+        registers.add(new RegisterEntry(Ecx.INSTANCE));
+        registers.add(new RegisterEntry(Edi.INSTANCE));
+        registers.add(new RegisterEntry(Esi.INSTANCE));
+    }
 
     public void enterScope() {
         scopes.push(new Scope());
@@ -51,7 +58,7 @@ public class CompilerContext {
     /**
      * https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
      *
-     * @param id
+     * @param id the variable ID
      */
     public void registerVariable(int id) {
         final Scope scope = getScope();
@@ -64,47 +71,55 @@ public class CompilerContext {
         variable.setStackPosition(stackPosition);
     }
 
-    public MemoryAccess allocate() {
-        if (!registers.isEmpty()) {
-            stack.push(registers.pop());
-            return stack.peek();
-        } else {
-            final Scope scope = getScope();
-            stack.push(new StackPosition(-4 - scope.getAllocated()));
-            scope.setAllocated(scope.getAllocated() + 4);
-            return stack.peek();
+    public void wrapInvoke(Consumer<Scope> consumer) {
+        final Scope scope = getScope();
+        final List<Register> stored = new ArrayList<>();
+        for (final RegisterEntry entry : registers) {
+            if (entry.getUsageCount() > 0) {
+                scope.addCommand(new X86.PushL(entry.getRegister()));
+                stored.add(entry.getRegister());
+            }
         }
-        /*final Register register = allocateRegister(false);
-        if (register != null) {
-            stack.push(register);
-            return stack.peek();
+        consumer.accept(scope);
+        for (int i = stored.size() - 1; i >= 0; --i) {
+            final Register register = stored.get(i);
+            scope.addCommand(new X86.PopL(register));
         }
-        return allocateRegister(true);*/
     }
 
-//    protected Register allocateRegister(boolean force) {
-//        for (Map.Entry<Register, RegisterEntry> entry : registers.entrySet()) {
-//            final Register register = entry.getKey();
-//            final RegisterEntry registerEntry = entry.getValue();
-//            if (registerEntry.isInStack()) {
-//                continue;
-//            }
-//            if (registerEntry.getVariable() != null) {
-//                if (force) {
-//                    //commands.add(new X86.MovL(register, ))
-//                } else {
-//                    continue;
-//                }
-//            }
-//            return register;
-//        }
-//        return null;
-//    }
+    /**
+     * Allocate temporary variable
+     *
+     * @return the memory pointer for temporary variable
+     */
+    public MemoryAccess allocate() {
+        for (final RegisterEntry entry : registers) {
+            if (entry.getUsageCount() > 0) {
+                continue;
+            }
+            if (stack.isEmpty() || stack.peek() instanceof Register) {
+                entry.setUsageCount(entry.getUsageCount() + 1);
+                stack.push(entry.getRegister());
+                return stack.peek();
+            }
+        }
+        final Scope scope = getScope();
+        stack.push(new StackPosition(-4 - scope.getAllocated()));
+        scope.setAllocated(scope.getAllocated() + 4);
+        return stack.peek();
+    }
 
     public MemoryAccess pop() {
         final MemoryAccess memoryAccess = stack.pop();
         if (memoryAccess instanceof Register) {
-            registers.push((Register) memoryAccess);
+            Register register = (Register) memoryAccess;
+            for (final RegisterEntry entry : registers) {
+                if (register.equals(entry.getRegister())) {
+                    entry.setUsageCount(entry.getUsageCount() - 1);
+                    assert entry.getUsageCount() >= 0;
+                    break;
+                }
+            }
         }
         if (memoryAccess instanceof StackPosition) {
             StackPosition current = (StackPosition) memoryAccess;
@@ -128,7 +143,18 @@ public class CompilerContext {
     }
 
     public void dup() {
-        stack.push(stack.peek());
+        MemoryAccess memoryAccess = stack.peek();
+        if (memoryAccess instanceof Register) {
+            Register register = (Register) memoryAccess;
+            for (final RegisterEntry entry : registers) {
+                if (register.equals(entry.getRegister())) {
+                    entry.setUsageCount(entry.getUsageCount() + 1);
+                    assert entry.getUsageCount() >= 0;
+                    break;
+                }
+            }
+        }
+        stack.push(memoryAccess);
     }
 
     public MemoryAccess get(int id) {
@@ -137,20 +163,20 @@ public class CompilerContext {
         if (variable == null) {
             throw new IllegalStateException(String.format("Unknown variable \"%d\"", id));
         }
-//        if (variable.getRegister() != null) {
-//
-//            return variable.getRegister();
-//        }
         assert variable.getStackPosition() != null;
         return variable.getStackPosition();
     }
 
-//    @Getter
-//    @Setter
-//    public static class RegisterEntry {
-//        private Variable variable;
-//        private boolean inStack;
-//    }
+    @Getter
+    @Setter
+    public static class RegisterEntry {
+        private final Register register;
+        private int usageCount;
+
+        public RegisterEntry(Register register) {
+            this.register = register;
+        }
+    }
 
     @Getter
     @Setter
@@ -171,12 +197,14 @@ public class CompilerContext {
             }
         }
 
-        public void move(MemoryAccess lhs, MemoryAccess rhs) {
-            if (Register.class.isInstance(lhs) || Register.class.isInstance(rhs)) {
-                addCommand(new X86.MovL(lhs, rhs));
+        public void move(MemoryAccess source, MemoryAccess destination) {
+            if (Register.class.isInstance(source) || Register.class.isInstance(destination)) {
+                addCommand(new X86.MovL(source, destination));
+            } else if (Immediate.class.isInstance(source)) {
+                addCommand(new X86.MovL(source, destination));
             } else {
-                addCommand(new X86.MovL(lhs, Eax.INSTANCE));
-                addCommand(new X86.MovL(Eax.INSTANCE, rhs));
+                addCommand(new X86.MovL(source, Eax.INSTANCE));
+                addCommand(new X86.MovL(Eax.INSTANCE, destination));
             }
         }
     }

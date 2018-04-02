@@ -4,6 +4,8 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 
+import java.util.List;
+
 /**
  * @author Victor Khovanskiy
  * @since 1.0.0
@@ -18,7 +20,9 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
 
     @Override
     public void visitFunction(VMFunction function, C c) throws Exception {
-        for (VM command : function.getCommands()) {
+        List<VM> commands = function.getCommands();
+        for (int i = 0; i < commands.size(); ++i) {
+            VM command = commands.get(i);
             visitCommand(command, c);
         }
     }

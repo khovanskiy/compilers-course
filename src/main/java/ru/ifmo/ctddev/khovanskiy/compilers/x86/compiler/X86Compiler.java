@@ -302,17 +302,20 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     @Override
     public void visitInvokeStatic(VM.InvokeStatic call, CompilerContext compilerContext) throws Exception {
         assert call.getArgumentsCount() <= compilerContext.getStack().size();
-        for (int i = 0; i < call.getArgumentsCount(); ++i) {
-            MemoryAccess memoryAccess = compilerContext.pop();
-            compilerContext.getScope().addCommand(new X86.PushL(memoryAccess));
-        }
-        compilerContext.getScope().addCommand(new X86.Call(call.getName()));
+
+        compilerContext.wrapInvoke(scope -> {
+            for (int i = 0; i < call.getArgumentsCount(); ++i) {
+                MemoryAccess memoryAccess = compilerContext.pop();
+                scope.addCommand(new X86.PushL(memoryAccess));
+            }
+            scope.addCommand(new X86.Call(call.getName()));
+            scope.addCommand(new X86.AddL(new Immediate(4 * call.getArgumentsCount()), Esp.INSTANCE));
+        });
+
+
         if (!call.getName().equals("write")) { // todo: if returns void type
             final MemoryAccess temporary = compilerContext.allocate();
             compilerContext.getScope().move(Eax.INSTANCE, temporary);
-        }
-        for (int i = 0; i < call.getArgumentsCount(); ++i) {
-            compilerContext.getScope().addCommand(new X86.PopL(Eax.INSTANCE));
         }
     }
 
@@ -347,15 +350,21 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitNewArray(VM.NewArray newArray, CompilerContext compilerContext) throws Exception {
-        final MemoryAccess memoryAccess = compilerContext.pop();
+    public void visitNewArray(VM.NewArray newArray, CompilerContext compilerContext) {
+        compilerContext.dup();
+        MemoryAccess memoryAccess = compilerContext.pop();
+
         compilerContext.getScope().move(memoryAccess, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(4), Eax.INSTANCE));
         compilerContext.getScope().addCommand(new X86.AddL(new Immediate(ARRAY_OFFSET), Eax.INSTANCE));
-        compilerContext.getScope().addCommand(new X86.PushL(Eax.INSTANCE));
-        compilerContext.getScope().addCommand(new X86.Call("malloc"));
-        compilerContext.getScope().addCommand(new X86.AddL(new Immediate(4), Esp.INSTANCE));
 
+        compilerContext.wrapInvoke(scope -> {
+            scope.addCommand(new X86.PushL(Eax.INSTANCE));
+            scope.addCommand(new X86.Call("malloc"));
+            scope.addCommand(new X86.AddL(new Immediate(4), Esp.INSTANCE));
+        });
+
+        memoryAccess = compilerContext.pop();
         compilerContext.getScope().move(memoryAccess, Edx.INSTANCE);
         compilerContext.getScope().move(Edx.INSTANCE, new StackPosition(0, Eax.INSTANCE));
 
@@ -364,7 +373,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitUnknown(VM vm, CompilerContext compilerContext) throws Exception {
+    public void visitUnknown(VM vm, CompilerContext compilerContext) {
         throw new UnsupportedOperationException();
     }
 }
