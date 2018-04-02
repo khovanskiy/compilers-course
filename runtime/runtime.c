@@ -14,20 +14,6 @@ void write(int value) {
     printf("%d\n", value);
 }
 
-
-int* arrmake(int size, int defaultValue) {
-    int* array = malloc((size + 1) * sizeof(int));
-    array[0] = size;
-    for (int i = 0; i < size; ++i) {
-        array[ARRAY_OFFSET + i] = defaultValue;
-    }
-    return array;
-}
-
-int arrlen(int* array) {
-    return array[0];
-}
-
 int strlen(int* string) {
     return string[0];
 }
@@ -95,4 +81,35 @@ int strcmp(int* lhs, int* rhs) {
         k++;
     }
     return cmp(lhsSize, rhsSize);
+}
+
+int* strmake(int size, int defaultValue) {
+    int* string = malloc((size + 1) * sizeof(int));
+    string[0] = size;
+    for (int i = 0; i < size; ++i) {
+        string[ARRAY_OFFSET + i] = defaultValue;
+    }
+    return string;
+}
+
+int* arrmake(int size, int defaultValue) {
+    int* array = malloc((size + 1) * sizeof(int));
+    array[0] = size;
+    for (int i = 0; i < size; ++i) {
+        array[ARRAY_OFFSET + i] = defaultValue;
+    }
+    return array;
+}
+
+int arrlen(int* array) {
+    return array[0];
+}
+
+int** Arrmake(int size, int* defaultValue) {
+    int** array = malloc((size + 1) * sizeof(int*));
+    array[0] = (int*) size;  // workaround
+    for (int i = 0; i < size; ++i) {
+        array[ARRAY_OFFSET + i] = defaultValue;
+    }
+    return array;
 }

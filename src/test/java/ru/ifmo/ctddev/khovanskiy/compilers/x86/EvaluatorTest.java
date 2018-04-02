@@ -3,6 +3,7 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86;
 import org.junit.Ignore;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
+import ru.ifmo.ctddev.khovanskiy.compilers.SystemService;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Pointer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
@@ -15,8 +16,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler.X86Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86Printer;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86PrinterContext;
 
-import java.io.PrintWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.Map;
 
 /**
@@ -45,8 +45,10 @@ public class EvaluatorTest extends BaseTest {
         evaluate("./compiler-tests/performance");
     }
 
+    private SystemService systemService = new SystemService();
+
     protected void evaluate(String s) {
-        runTests(s, "./target/temp", (ast, reader, writer) -> {
+        runTests(s, "./target/temp", (testName, ast, reader, writer) -> {
             final VMCompiler compiler = new VMCompiler();
             final CompilerContext compilerContext = compiler.compile(ast);
 
@@ -62,11 +64,39 @@ public class EvaluatorTest extends BaseTest {
 
 //            VMEvaluator.evaluate(newProgram, externals);
 
-            X86Compiler x86Compiler = new X86Compiler();
-            final X86Program x86Program = x86Compiler.compile(newProgram);
-            System.out.println("// ----------------------------------------");
-            X86Printer x86Printer = new X86Printer();
-            x86Printer.visitProgram(x86Program, new X86PrinterContext(consoleWriter));
+            File asmFile = new File("./target/temp", testName + ".s");
+            try (FileWriter asmWriter = new FileWriter(asmFile)) {
+                X86Compiler x86Compiler = new X86Compiler();
+                final X86Program x86Program = x86Compiler.compile(newProgram);
+                System.out.println("// ----------------------------------------");
+                X86Printer x86Printer = new X86Printer();
+                x86Printer.visitProgram(x86Program, new X86PrinterContext(asmWriter));
+            }
+
+            systemService.executeForRead(new String[]{"./runtime/compile.sh", "./runtime", "./target/temp/" + testName}, (inputStream -> {
+                try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    while (compilationReader.ready()) {
+                        System.out.println(compilationReader.readLine());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return "";
+            }));
+
+            systemService.executeForRead(new String[]{"./runtime/run.sh", "./target/temp/" + testName, "./compiler-tests/core/" + testName + ".input"}, (inputStream -> {
+                try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    while (compilationReader.ready()) {
+                        String line = compilationReader.readLine();
+//                        System.out.println("#" + line);
+                        writer.write(line + "\n");
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return "";
+            }));
+            writer.flush();
         });
     }
 }

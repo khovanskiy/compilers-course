@@ -24,7 +24,7 @@ public abstract class BaseTest {
         final List<File> outputFiles = new ArrayList<>();
         try {
             final Stream<Path> testsStream = getTests(inputDirectoryFile);
-            testsStream.skip(26).limit(1).forEach(path -> {
+            testsStream.forEach(path -> {
                 final String testName = path.getFileName().toString().split("\\.")[0];
                 log.info("Run test \"{}\"", path);
                 final File outputDirectoryFile = new File(outputDirectory);
@@ -48,7 +48,7 @@ public abstract class BaseTest {
                 try (final FileReader reader = new FileReader(inputFile);
                      final FileWriter writer = new FileWriter(outputFile)) {
                     final AST.CompilationUnit ast = parseAST(testFile);
-                    consumer.run(ast, reader, writer);
+                    consumer.run(testName, ast, reader, writer);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -108,6 +108,6 @@ public abstract class BaseTest {
 
     @FunctionalInterface
     public interface TestCaseConsumer {
-        void run(AST.CompilationUnit ast, Reader reader, Writer writer) throws Exception;
+        void run(String testName, AST.CompilationUnit ast, Reader reader, Writer writer) throws Exception;
     }
 }

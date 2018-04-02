@@ -42,7 +42,7 @@ public class EvaluatorTest extends BaseTest {
     }
 
     protected void evaluate(String s) {
-        runTests(s, "./target/temp", (ast, reader, writer) -> {
+        runTests(s, "./target/temp", (testName, ast, reader, writer) -> {
             final VMCompiler compiler = new VMCompiler();
             final CompilerContext compilerContext = compiler.compile(ast);
 
@@ -55,6 +55,7 @@ public class EvaluatorTest extends BaseTest {
             VMEvaluator VMEvaluator = new VMEvaluator();
 
             final Map<Pointer, Symbol> externals = ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.EvaluatorTest.defineExternalFunctions(reader, writer);
+
 
             VMEvaluator.evaluate(newProgram, externals);
         });

@@ -15,7 +15,7 @@ public class ParserTest extends BaseTest {
     @Test
     @Ignore
     public void testCore() {
-        runTests("./compiler-tests/core", "./target/temp", (ast, reader, writer) -> {
+        runTests("./compiler-tests/core", "./target/temp", (testName, ast, reader, writer) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));
@@ -25,7 +25,7 @@ public class ParserTest extends BaseTest {
     @Test
     @Ignore
     public void testDeepExpressions() {
-        runTests("./compiler-tests/deep-expressions", "./target/temp", (ast, reader, writer) -> {
+        runTests("./compiler-tests/deep-expressions", "./target/temp", (testName, ast, reader, writer) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));
@@ -35,7 +35,7 @@ public class ParserTest extends BaseTest {
     @Test
     @Ignore
     public void testExpressions() {
-        runTests("./compiler-tests/expressions", "./target/temp", (ast, reader, writer) -> {
+        runTests("./compiler-tests/expressions", "./target/temp", (testName, ast, reader, writer) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));
@@ -45,7 +45,7 @@ public class ParserTest extends BaseTest {
     @Test
     @Ignore
     public void testPerformance() {
-        runTests("./compiler-tests/performance", "./target/temp", (ast, reader, writer) -> {
+        runTests("./compiler-tests/performance", "./target/temp", (testName, ast, reader, writer) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));

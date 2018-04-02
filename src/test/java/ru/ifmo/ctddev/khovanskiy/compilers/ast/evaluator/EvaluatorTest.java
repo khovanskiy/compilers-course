@@ -39,7 +39,7 @@ public class EvaluatorTest extends BaseTest {
 
 
     protected void evaluate(String s) {
-        runTests(s, "./target/temp", (ast, reader, writer) -> {
+        runTests(s, "./target/temp", (testName, ast, reader, writer) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitCompilationUnit(ast, new PrinterContext(consoleWriter));

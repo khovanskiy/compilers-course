@@ -289,7 +289,8 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
     @Override
     public void visitAConstNull(VM.AConstNull aConstNull, CompilerContext compilerContext) throws Exception {
-        throw new UnsupportedOperationException();
+        final MemoryAccess temporary = compilerContext.allocate();
+        compilerContext.getScope().move(new Immediate(0), temporary);
     }
 
     @Override
