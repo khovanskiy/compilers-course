@@ -16,7 +16,7 @@ public class CompilerContext {
     private Stack<Scope> scopes = new Stack<>();
 
     public CompilerContext() {
-        this.scopes.add(new Scope());
+//        this.scopes.push(new Scope());
     }
 
     public void addCommand(final VM command) {

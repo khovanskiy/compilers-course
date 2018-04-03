@@ -10,8 +10,13 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.CompilerContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.VMCompiler;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.PrinterContext;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.VMPrinter;
 
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.Map;
+
 
 /**
  * @author Victor Khovanskiy
@@ -47,9 +52,12 @@ public class EvaluatorTest extends BaseTest {
 
             final VMProgram newProgram = compilerContext.getVmProgram();
 
-//            final VMPrinter printer = new VMPrinter();
-//            final Writer consoleWriter = new PrintWriter(System.out);
-//            printer.visitProgram(newProgram, new PrinterContext(consoleWriter));
+            final VMPrinter printer = new VMPrinter();
+            final Writer consoleWriter = new PrintWriter(System.out);
+            printer.visitProgram(newProgram, new PrinterContext(consoleWriter));
+
+//            final TypeInferencer typeInferencer = new TypeInferencer();
+//            typeInferencer.visitCompilationUnit(testCase.getAst(), new Context());
 
             final VMEvaluator VMEvaluator = new VMEvaluator();
             final Map<Pointer, Symbol> externals = ASTEvaluatorTest.defineExternalFunctions(testCase.getReader(), testCase.getWriter());

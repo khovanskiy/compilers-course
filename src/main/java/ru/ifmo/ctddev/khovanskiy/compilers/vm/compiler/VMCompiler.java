@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+
 @Slf4j
 public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements Compiler<AST.CompilationUnit, CompilerContext> {
     @Override
@@ -48,8 +49,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
             log.info("Function {}: rename variable {} to {}", functionDefinition.getName(), name, id);
         }
         visitCompoundStatement(functionDefinition.getCompoundStatement(), compilerContext);
-        compilerContext.getScopes().pop();
-
+        final CompilerContext.Scope scope = compilerContext.getScopes().pop();
     }
 
     @Override
@@ -61,8 +61,8 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, CompilerContext compilerContext) throws Exception {
         if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
-            String oldName = variableAccessExpression.getName();
-            final int id = compilerContext.getScope().rename(oldName);
+            final String name = variableAccessExpression.getName();
+            final int id = compilerContext.getScope().rename(name);
             // expression
             visitExpression(assignmentStatement.getExpression(), compilerContext);
             //
