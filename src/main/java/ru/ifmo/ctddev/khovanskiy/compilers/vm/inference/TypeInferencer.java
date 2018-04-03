@@ -37,9 +37,6 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
 //            scope.getTypes().forEach((id, type) -> System.out.println("Variable v" + id + " has type " + type));
         });
-        context.getRelations().forEach(typeRelation -> {
-            System.out.println(typeRelation);
-        });
         new Evaluator(context.getRelations()).run();
     }
 
@@ -151,12 +148,12 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final Context context) throws Exception {
-        context.getScope().pushType(new ConcreteType(ConcreteType.VALUE.INTEGER));
+        context.getScope().pushType(new PrimitiveType(PrimitiveType.VALUE.INTEGER));
     }
 
     @Override
     public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        context.getScope().pushType(new PrimitiveType(PrimitiveType.VALUE.CHAR));
     }
 
     @Override
@@ -180,7 +177,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         final Type leftType = context.getScope().popType();
         visitExpression(binaryExpression.getRight(), context);
         final Type rightType = context.getScope().popType();
-        final ConcreteType resultType = new ConcreteType(ConcreteType.VALUE.INTEGER);
+        final ConcreteType resultType = new PrimitiveType(PrimitiveType.VALUE.INTEGER);
         context.addTypeRelation(leftType, resultType);
         context.addTypeRelation(rightType, resultType);
         context.getScope().pushType(resultType);
@@ -195,6 +192,10 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
         public Evaluator(List<TypeRelation> relations) {
             this.relations = relations;
+//            this.relations = new ArrayList<>();
+//            this.relations.add(new TypeRelation(new PrimitiveType(PrimitiveType.VALUE.INTEGER), new TypeVariable(0)));
+//            this.relations.add(new TypeRelation(new PrimitiveType(PrimitiveType.VALUE.ARRAY), new TypeVariable(0)));
+//            this.relations.add(new TypeRelation(new TypeVariable(0), new TypeVariable(1)));
         }
 
         /**
@@ -205,84 +206,194 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         }
 
         /**
+         * Union computes the common subtype of two concrete types if possible,
+         * e.g., (Object, Serializable) == Object&Serializable, (Integer, String) == null.
+         */
+        public Set<Type> union(final Set<Type> left, final Set<Type> right) {
+            final Set<Type> result = new HashSet<>();
+            for (final Type current : left) {
+                for (final Type another : result) {
+                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
+                        return null;
+                    }
+                }
+                result.add(current);
+            }
+            for (final Type current : right) {
+                for (final Type another : result) {
+                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
+                        return null;
+                    }
+                }
+                result.add(current);
+            }
+            return result; // todo:
+        }
+
+        /**
+         * Intersection computes the nearest supertype of two concrete types,
+         * e.g., (List, Set) == Collection, (Integer, String) == Object.
+         */
+        public Set<Type> intersection(final Set<Type> left, final Set<Type> right) {
+            final Set<Type> result = new HashSet<>();
+            for (final Type current : left) {
+                for (final Type another : result) {
+                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
+                        return Collections.singleton(new PrimitiveType(PrimitiveType.VALUE.ANY));
+                    }
+                }
+                result.add(current);
+            }
+            for (final Type current : right) {
+                for (final Type another : result) {
+                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
+                        return Collections.singleton(new PrimitiveType(PrimitiveType.VALUE.ANY));
+                    }
+                }
+                result.add(current);
+            }
+            return result; // todo:
+        }
+
+        /**
          * https://stackoverflow.com/questions/6783463/hindley-milner-algorithm-in-java
          */
         public void run() {
             final Queue<TypeRelation> queue = new ArrayDeque<>();
             queue.addAll(relations);
+
+            queue.forEach(typeRelation -> {
+                System.out.println(typeRelation);
+            });
+
             final List<TypeRelation> reflexives = new ArrayList<>();
             while (!queue.isEmpty()) {
                 final TypeRelation rel = queue.poll();
                 if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof TypeVariable) {
                     final TypeVariable relLeft = (TypeVariable) rel.getLeft();
                     final TypeVariable relRight = (TypeVariable) rel.getRight();
-                    // case 1
-                    boolean found1 = false;
-                    boolean found2 = false;
-                    for (final TypeRelation ab : reflexives) {
-                        if (ab.getRight().equals(relLeft)) {
-                            final TypeVariable abLeft = (TypeVariable) ab.getLeft();
-                            found1 = true;
-                            // add (ab.left, rel.right) to Reflexives
-                            reflexives.add(new TypeRelation(abLeft, relRight));
-                            // union and set upper bounds of ab.left with upper bounds of rel.right
-                            final Set<Type> union = SetUtils.union(getUpperBounds(abLeft), getUpperBounds(relRight));
-                            upperBounds.put(abLeft, union);
-                        }
-                        if (ab.getLeft().equals(relRight)) {
-                            final TypeVariable abRight = (TypeVariable) ab.getRight();
-                            found2 = true;
-                            // add (rel.left, ab.right) to Reflexives
-                            reflexives.add(new TypeRelation(relLeft, abRight));
-                            // intersect and set lower bounds of ab.right  with lower bounds of rel.left
-                            final Set<Type> intersection = SetUtils.intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
-                            lowerBounds.put(abRight, intersection);
-                        }
-                    }
-                    if (!found1) {
-                        // union and set upper bounds of rel.left with upper bounds of rel.right
-                        final Set<Type> union = SetUtils.union(getUpperBounds(relLeft), getUpperBounds(relRight));
-                        upperBounds.put(relLeft, union);
-                    }
-                    if (!found2) {
-                        // intersect and set lower bounds of rel.right with lower bounds of rel.left
-                        final Set<Type> intersection = SetUtils.intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
-                        lowerBounds.put(relRight, intersection);
-                    }
-                    // add TypeRelation(rel.left, rel.right) to Reflexives
-                    reflexives.add(new TypeRelation(relLeft, relRight));
+                    final TypeRelation entry = new TypeRelation(relLeft, relRight);
 
-                    for (final Type lb : getLowerBounds(relLeft)) {
-                        for (final Type ub : getUpperBounds(relRight)) {
-                            // add all SubC(lb, ub) to TypeRelations
-                            final List<TypeRelation> decomposition = subC(lb, ub);
-                            relations.addAll(decomposition);
-                        }
-                    }
-                    continue;
-                }
-                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof ConcreteType) {
-                    // case 2
-                    throw new UnsupportedOperationException();
-                }
-                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof TypeVariable) {
-                    final TypeVariable right = (TypeVariable) rel.getRight();
-                    if (!getLowerBounds(right).contains(rel.getLeft())) {
-                        // case 3
-                        boolean found = false;
+                    // Reflexives does not have an entry with (left, right)
+                    if (!reflexives.contains(entry)) {
+                        // case 1
+                        boolean found1 = false;
+                        boolean found2 = false;
                         for (final TypeRelation ab : reflexives) {
-                            if (ab.getLeft().equals(rel.getRight())) {
-                                found = true;
-
+                            if (ab.getRight().equals(relLeft)) {
+                                final TypeVariable abLeft = (TypeVariable) ab.getLeft();
+                                found1 = true;
+                                // add (ab.left, rel.right) to Reflexives
+                                reflexives.add(new TypeRelation(abLeft, relRight));
+                                // union and set upper bounds of ab.left with upper bounds of rel.right
+                                final Set<Type> union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
+                                upperBounds.put(abLeft, union);
+                            }
+                            if (ab.getLeft().equals(relRight)) {
+                                final TypeVariable abRight = (TypeVariable) ab.getRight();
+                                found2 = true;
+                                // add (rel.left, ab.right) to Reflexives
+                                reflexives.add(new TypeRelation(relLeft, abRight));
+                                // intersect and set lower bounds of ab.right  with lower bounds of rel.left
+                                final Set<Type> intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
+                                lowerBounds.put(abRight, intersection);
                             }
                         }
-                        if (!found) {
+                        if (!found1) {
+                            // union and set upper bounds of rel.left with upper bounds of rel.right
+                            final Set<Type> union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
+                            upperBounds.put(relLeft, union);
+                        }
+                        if (!found2) {
+                            // intersect and set lower bounds of rel.right with lower bounds of rel.left
+                            final Set<Type> intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
+                            lowerBounds.put(relRight, intersection);
+                        }
+                        // add TypeRelation(rel.left, rel.right) to Reflexives
+                        reflexives.add(new TypeRelation(relLeft, relRight));
 
+                        for (final Type lb : getLowerBounds(relLeft)) {
+                            for (final Type ub : getUpperBounds(relRight)) {
+                                // add all SubC(lb, ub) to TypeRelations
+                                final List<TypeRelation> decomposition = subC(lb, ub);
+                                relations.addAll(decomposition);
+                            }
                         }
                         continue;
                     }
                 }
+                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof ConcreteType) {
+                    final TypeVariable relLeft = (TypeVariable) rel.getLeft();
+                    final ConcreteType relRight = (ConcreteType) rel.getRight();
+
+                    // UpperBound of rel.left does not contain rel.right
+                    if (!getUpperBounds(relLeft).contains(relRight)) {
+                        // case 2
+                        boolean found = false;
+                        for (final TypeRelation ab : reflexives) {
+                            if (ab.getRight().equals(rel.getLeft())) {
+                                final TypeVariable abLeft = (TypeVariable) ab.getLeft();
+                                found = true;
+                                // union and set upper bounds of ab.left with rel.right
+                                final Set<Type> union = union(getUpperBounds(abLeft), Collections.singleton(relRight));
+                                upperBounds.put(abLeft, union);
+                            }
+                        }
+                        if (!found) {
+                            // union the upper bounds of rel.left with rel.right
+                            final Set<Type> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
+                            upperBounds.put(relLeft, union);
+                        }
+                        for (final Type lb : getLowerBounds(relLeft)) {
+                            // add all SubC(lb, rel.right) to TypeRelations
+                            final List<TypeRelation> decomposition = subC(lb, relRight);
+                            relations.addAll(decomposition);
+                        }
+                        continue;
+                    }
+                }
+                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof TypeVariable) {
+                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
+                    final TypeVariable relRight = (TypeVariable) rel.getRight();
+
+                    // LowerBound of rel.right does not contain rel.left
+                    if (!getLowerBounds(relRight).contains(rel.getLeft())) {
+                        // case 3
+                        boolean found = false;
+                        for (final TypeRelation ab : reflexives) {
+                            if (ab.getLeft().equals(rel.getRight())) {
+                                final TypeVariable abRight = (TypeVariable) ab.getRight();
+                                found = true;
+                                // intersect and set lower bounds of ab.right with rel.left
+                                final Set<Type> intersection = intersection(getLowerBounds(abRight), Collections.singleton(relLeft));
+                                lowerBounds.put(abRight, intersection);
+                            }
+                        }
+                        if (!found) {
+                            // intersect and set lower bounds of rel.right with rel.left
+                            final Set<Type> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
+                            lowerBounds.put(relRight, intersection);
+                        }
+                        for (final Type ub : getUpperBounds(relRight)) {
+                            // add each SubC(rel.left, ub) to TypeRelations
+                            final List<TypeRelation> decomposition = subC(relLeft, ub);
+                            relations.addAll(decomposition);
+                        }
+                        continue;
+                    }
+                }
+                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof ConcreteType) {
+                    continue;
+                }
             }
+            queue.size();
+
+            SetUtils.union(lowerBounds.keySet(), upperBounds.keySet()).stream().sorted(Comparator.comparing(TypeVariable::toString))
+                    .forEach(typeVariable -> {
+                        final Set<Type> upperBound = getUpperBounds(typeVariable);
+                        final Set<Type> lowerBound = getLowerBounds(typeVariable);
+                        System.out.println(upperBound + " >= " + typeVariable + " >= " + lowerBound);
+                    });
         }
 
         public Set<Type> getLowerBounds(final TypeVariable typeVariable) {

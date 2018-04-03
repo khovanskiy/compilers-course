@@ -85,7 +85,11 @@ public class Context {
         }
 
         public TypeVariable getVariableType(final int id) {
-            return variables.computeIfAbsent(id, k -> new TypeVariable(typeVariableIds.getAndIncrement()));
+            return variables.computeIfAbsent(id, k -> {
+                final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement());
+                System.out.println("Variable v" + id + " has type variable: " + typeVariable);
+                return typeVariable;
+            });
         }
 
         public Type getReturnType() {
