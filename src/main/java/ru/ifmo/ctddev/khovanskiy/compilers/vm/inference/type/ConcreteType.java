@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
+package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type;
 
 import lombok.Getter;
 
@@ -9,4 +9,7 @@ import lombok.Getter;
  */
 @Getter
 public abstract class ConcreteType extends Type {
+    public ConcreteType getParentType() {
+        return null;
+    }
 }

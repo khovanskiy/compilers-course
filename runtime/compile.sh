@@ -12,6 +12,7 @@ if [ "$#" -ne 2 ]; then
     exit 1
 fi
 
+gcc -S -m32 -O0 -fno-asynchronous-unwind-tables $1/runtime.c -o ./runtime.s
 gcc -m32 -c $1/runtime.s -o $1/runtime.o
 gcc -m32 -c $2.s -o $2.o
 gcc -m32 $1/runtime.o $2.o -o $2

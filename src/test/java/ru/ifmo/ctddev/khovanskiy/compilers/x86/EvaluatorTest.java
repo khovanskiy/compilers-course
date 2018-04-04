@@ -50,7 +50,7 @@ public class EvaluatorTest extends BaseTest {
 //            VMPrinter vmPrinter = new VMPrinter();
 //            vmPrinter.visitProgram(newProgram, new PrinterContext(new PrintWriter(System.out)));
             File asmFile = new File("./target/temp", testCase.getTestName() + ".s");
-            testCase.getTemporaryFiles().add(asmFile);
+//            testCase.getTemporaryFiles().add(asmFile);
             try (FileWriter asmWriter = new FileWriter(asmFile)) {
                 X86Compiler x86Compiler = new X86Compiler();
                 final X86Program x86Program = x86Compiler.compile(newProgram);

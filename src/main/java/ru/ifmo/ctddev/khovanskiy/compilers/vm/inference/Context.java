@@ -2,6 +2,8 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 
 import lombok.Getter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.Type;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.TypeVariable;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -55,7 +57,7 @@ public class Context {
     }
 
     public Scope getScopeByName(final String name) {
-        return functionScopes.computeIfAbsent(name, k -> new Scope());
+        return functionScopes.computeIfAbsent(name, k -> new Scope(name));
     }
 
     @Getter
@@ -66,7 +68,13 @@ public class Context {
 
         private final RenameHolder renameHolder = new RenameHolder();
 
+        private final String name;
+
         private TypeVariable returnType;
+
+        Scope(String name) {
+            this.name = name;
+        }
 
         public void pushType(final Type type) {
             typeStack.push(type);
@@ -87,20 +95,22 @@ public class Context {
         public TypeVariable getVariableType(final int id) {
             return variables.computeIfAbsent(id, k -> {
                 final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement());
-                System.out.println("Variable v" + id + " has type variable: " + typeVariable);
+                System.out.println("Function \"" + name + "\" Variable v" + id + " has type variable: " + typeVariable);
                 return typeVariable;
             });
         }
 
-        public Type getReturnType() {
+        public TypeVariable getReturnType() {
             if (returnType == null) {
                 returnType = new TypeVariable(typeVariableIds.getAndIncrement());
+                System.out.println("Function \"" + name + "\" has return type variable: " + returnType);
             }
             return returnType;
         }
 
         public void setReturnType(final Type returnType) {
-            throw new UnsupportedOperationException();
+            this.returnType = getReturnType();
+            addTypeRelation(returnType, this.returnType);
         }
 
         public void setVariableType(final int id, Type type) {

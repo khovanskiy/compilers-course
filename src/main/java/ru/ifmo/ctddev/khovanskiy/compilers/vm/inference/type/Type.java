@@ -1,4 +1,4 @@
-package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
+package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type;
 
 /**
  * @author Victor Khovanskiy

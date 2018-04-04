@@ -2,7 +2,9 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.*;
 
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,6 +27,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         for (final AST.FunctionDefinition f : functions) {
             visitFunctionDefinition(f, context);
         }
+        new Evaluator(context.getRelations()).run();
     }
 
     @Override
@@ -37,12 +40,12 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
 //            scope.getTypes().forEach((id, type) -> System.out.println("Variable v" + id + " has type " + type));
         });
-        new Evaluator(context.getRelations()).run();
     }
 
     @Override
     public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        final String name = variableDefinition.getName();
+        final int id = context.getScope().getVariableId(name);
     }
 
     @Override
@@ -55,6 +58,37 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
             final int id = context.getScope().getVariableId(name);
             context.getScope().setVariableType(id, rvalueType);
             return;
+        }
+        if (assignmentStatement.getMemoryAccess() instanceof AST.ArrayAccessExpression) {
+            final AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
+//            visitMemoryAccess(arrayAccessExpression.getPointer(), context);
+//            final Type arrayType = context.getScope().popType();
+            visitExpression(arrayAccessExpression.getExpression(), context);
+            final Type indexType = context.getScope().popType();
+            visitExpression(assignmentStatement.getExpression(), context);
+            final Type rvalueType = context.getScope().popType();
+            final Type arrayType = buildArrayType(assignmentStatement.getMemoryAccess(), rvalueType, context);
+//            context.addTypeRelation(arrayType, ArrayType.of(rvalueType));
+            context.addTypeRelation(indexType, IntegerType.INSTANCE);
+            return;
+        }
+        throw new IllegalStateException();
+    }
+
+    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, Context context) {
+        if (memoryAccess instanceof AST.VariableAccessExpression) {
+            final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) memoryAccess;
+            final String name = variableAccessExpression.getName();
+            final int id = context.getScope().getVariableId(name);
+            context.getScope().setVariableType(id, callback);
+            return (Type) callback;
+        }
+        if (memoryAccess instanceof AST.ArrayAccessExpression) {
+//            buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), (old) -> {
+//                final Type newType = callback.apply(old);
+//                return ArrayType.of(newType);
+//            }, context);
+            return buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), ArrayType.INSTANCE, context);
         }
         throw new IllegalStateException();
     }
@@ -81,7 +115,11 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitReturnStatement(final AST.ReturnStatement returnStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        if (returnStatement.getExpression() != null) {
+            visitExpression(returnStatement.getExpression(), context);
+            final Type returnType = context.getScope().popType();
+            context.getScope().setReturnType(returnType);
+        }
     }
 
     @Override
@@ -101,7 +139,16 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitForStatement(final AST.ForStatement forStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        if (forStatement.getInit() != null) {
+            visitAssignmentStatement(forStatement.getInit(), context);
+        }
+        if (forStatement.getCondition() != null) {
+            visitExpression(forStatement.getCondition(), context);
+        }
+        visitCompoundStatement(forStatement.getCompoundStatement(), context);
+        if (forStatement.getLoop() != null) {
+            visitAssignmentStatement(forStatement.getLoop(), context);
+        }
     }
 
     @Override
@@ -120,7 +167,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        context.getScope().pushType(ArrayType.INSTANCE);
     }
 
     @Override
@@ -133,7 +180,14 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        visitMemoryAccess(arrayAccessExpression.getPointer(), context);
+        final Type arrayType = context.getScope().popType();
+        visitExpression(arrayAccessExpression.getExpression(), context);
+        final Type indexType = context.getScope().popType();
+//        assert type instanceof ArrayType;
+//        final Type elementType = ((ArrayType) type).getElementType();
+//        context.getScope().pushType(elementType);
+        context.getScope().pushType(ArrayType.INSTANCE);
     }
 
     @Override
@@ -148,17 +202,17 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 
     @Override
     public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final Context context) throws Exception {
-        context.getScope().pushType(new PrimitiveType(PrimitiveType.VALUE.INTEGER));
+        context.getScope().pushType(IntegerType.INSTANCE);
     }
 
     @Override
     public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final Context context) throws Exception {
-        context.getScope().pushType(new PrimitiveType(PrimitiveType.VALUE.CHAR));
+        context.getScope().pushType(CharacterType.INSTANCE);
     }
 
     @Override
     public void visitStringLiteral(final AST.StringLiteral stringLiteral, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+        context.getScope().pushType(ArrayType.INSTANCE);
     }
 
     @Override
@@ -177,25 +231,65 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         final Type leftType = context.getScope().popType();
         visitExpression(binaryExpression.getRight(), context);
         final Type rightType = context.getScope().popType();
-        final ConcreteType resultType = new PrimitiveType(PrimitiveType.VALUE.INTEGER);
-        context.addTypeRelation(leftType, resultType);
-        context.addTypeRelation(rightType, resultType);
+
+        final ConcreteType argumentType = IntegerType.INSTANCE;
+        context.addTypeRelation(leftType, argumentType);
+        context.addTypeRelation(rightType, argumentType);
+
+        final ConcreteType resultType = IntegerType.INSTANCE;
         context.getScope().pushType(resultType);
     }
 
     public static class Evaluator {
-        private final Map<TypeVariable, Set<Type>> upperBounds = new HashMap<>();
+        private final Map<TypeVariable, Set<ConcreteType>> upperBounds = new HashMap<>();
 
-        private final Map<TypeVariable, Set<Type>> lowerBounds = new HashMap<>();
+        private final Map<TypeVariable, Set<ConcreteType>> lowerBounds = new HashMap<>();
 
         private final List<TypeRelation> relations;
 
         public Evaluator(List<TypeRelation> relations) {
             this.relations = relations;
 //            this.relations = new ArrayList<>();
-//            this.relations.add(new TypeRelation(new PrimitiveType(PrimitiveType.VALUE.INTEGER), new TypeVariable(0)));
-//            this.relations.add(new TypeRelation(new PrimitiveType(PrimitiveType.VALUE.ARRAY), new TypeVariable(0)));
-//            this.relations.add(new TypeRelation(new TypeVariable(0), new TypeVariable(1)));
+//            this.relations.add(new TypeRelation(IntegerType.INSTANCE, new TypeVariable(0)));
+//            this.relations.add(new TypeRelation(CharacterType.INSTANCE, new TypeVariable(0)));
+//            this.relations.add(new TypeRelation(new TypeVariable(0), IntegerType.INSTANCE));
+//            for (TypeRelation rel : this.relations) {
+//                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof ConcreteType) {
+//                    final TypeVariable relLeft = (TypeVariable) rel.getLeft();
+//                    final ConcreteType relRight = (ConcreteType) rel.getRight();
+//                    final Set<ConcreteType> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
+//                    upperBounds.put(relLeft, union);
+////                    getUpperBounds((TypeVariable) rel.getLeft()).add((ConcreteType) rel.getRight());
+//                }
+//                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof TypeVariable) {
+//                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
+//                    final TypeVariable relRight = (TypeVariable) rel.getRight();
+//                    final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
+//                    lowerBounds.put(relRight, intersection);
+////                    getLowerBounds((TypeVariable) rel.getRight()).add((ConcreteType) rel.getLeft());
+//                }
+//            }
+        }
+
+        /**
+         * ExtendsOrEquals can tell about two concrete types if the first extends or equals the second,
+         * e.g., (String, Object) == true, (Object, String) == false.
+         */
+        public boolean isExtendsOrEquals(final ConcreteType left, final ConcreteType right) {
+            final Deque<ConcreteType> first = getInheritanceLine(left);
+            final Deque<ConcreteType> second = getInheritanceLine(right);
+            if (second.size() > first.size()) {
+                return false;
+            }
+            int size = second.size(); // lower or equal
+            for (int i = 0; i < size; ++i) {
+                ConcreteType f1 = first.pop();
+                ConcreteType f2 = second.pop();
+                if (!f1.equals(f2)) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /**
@@ -209,50 +303,102 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
          * Union computes the common subtype of two concrete types if possible,
          * e.g., (Object, Serializable) == Object&Serializable, (Integer, String) == null.
          */
-        public Set<Type> union(final Set<Type> left, final Set<Type> right) {
-            final Set<Type> result = new HashSet<>();
-            for (final Type current : left) {
-                for (final Type another : result) {
-                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
-                        return null;
+        public Set<ConcreteType> union(final Set<ConcreteType> left, final Set<ConcreteType> right) {
+            final List<ConcreteType> union = new ArrayList<>(SetUtils.union(left, right));
+            if (union.isEmpty()) {
+                return Collections.emptySet();
+            }
+            final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
+
+            ConcreteType superType = null;
+            boolean found = false;
+            while (!found) {
+                ConcreteType candidate = null;
+                for (int i = 0; i < union.size(); ++i) {
+                    final Deque<ConcreteType> line = lines.get(i);
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+                    ConcreteType type = line.pop();
+                    if (candidate == null) {
+                        candidate = type;
+                    } else if (!candidate.equals(type)) {
+                        found = true;
                     }
                 }
-                result.add(current);
-            }
-            for (final Type current : right) {
-                for (final Type another : result) {
-                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
-                        return null;
-                    }
+                if (candidate == null) {
+                    break;
                 }
-                result.add(current);
+                if (!found) {
+                    superType = candidate;
+                }
             }
-            return result; // todo:
+            assert superType != null;
+            return Collections.singleton(superType);
+        }
+
+        public <T extends Collection & Serializable> void f(T t) {
+
         }
 
         /**
          * Intersection computes the nearest supertype of two concrete types,
          * e.g., (List, Set) == Collection, (Integer, String) == Object.
          */
-        public Set<Type> intersection(final Set<Type> left, final Set<Type> right) {
-            final Set<Type> result = new HashSet<>();
-            for (final Type current : left) {
-                for (final Type another : result) {
-                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
-                        return Collections.singleton(new PrimitiveType(PrimitiveType.VALUE.ANY));
+        public Set<ConcreteType> intersection(final Set<ConcreteType> left, final Set<ConcreteType> right) {
+            final List<ConcreteType> union = new ArrayList<>(SetUtils.union(left, right));
+            if (union.isEmpty()) {
+                return Collections.emptySet();
+            }
+            final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
+
+            ConcreteType superType = null;
+            boolean found = false;
+            while (!found) {
+                ConcreteType candidate = null;
+                for (int i = 0; i < union.size(); ++i) {
+                    final Deque<ConcreteType> line = lines.get(i);
+                    if (line.isEmpty()) {
+                        found = true;
+                        break;
+                    }
+                    ConcreteType type = line.pop();
+                    if (candidate == null) {
+                        candidate = type;
+                    } else if (!candidate.equals(type)) {
+                        found = true;
                     }
                 }
-                result.add(current);
-            }
-            for (final Type current : right) {
-                for (final Type another : result) {
-                    if (!current.equals(another) && current instanceof PrimitiveType && another instanceof PrimitiveType) {
-                        return Collections.singleton(new PrimitiveType(PrimitiveType.VALUE.ANY));
-                    }
+                if (candidate == null) {
+                    break;
                 }
-                result.add(current);
+                if (!found) {
+                    superType = candidate;
+                }
             }
-            return result; // todo:
+            assert superType != null;
+            return Collections.singleton(superType);
+        }
+
+        private List<Deque<ConcreteType>> getInheritanceLines(List<ConcreteType> union) {
+            final List<Deque<ConcreteType>> lines = new ArrayList<>(union.size());
+            for (int i = 0; i < union.size(); ++i) {
+                final ConcreteType current = union.get(i);
+                final Deque<ConcreteType> line = getInheritanceLine(current);
+                lines.add(line);
+            }
+            return lines;
+        }
+
+        private Deque<ConcreteType> getInheritanceLine(ConcreteType type) {
+            final Deque<ConcreteType> line = new ArrayDeque<>();
+            ConcreteType current = type;
+            while (!current.equals(ObjectType.INSTANCE)) {
+                line.push(current);
+                current = current.getParentType();
+            }
+            line.push(current);
+            return line;
         }
 
         /**
@@ -262,6 +408,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
             final Queue<TypeRelation> queue = new ArrayDeque<>();
             queue.addAll(relations);
 
+            System.out.println("Relations:");
             queue.forEach(typeRelation -> {
                 System.out.println(typeRelation);
             });
@@ -269,6 +416,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
             final List<TypeRelation> reflexives = new ArrayList<>();
             while (!queue.isEmpty()) {
                 final TypeRelation rel = queue.poll();
+                System.out.println("Visit " + rel);
                 if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof TypeVariable) {
                     final TypeVariable relLeft = (TypeVariable) rel.getLeft();
                     final TypeVariable relRight = (TypeVariable) rel.getRight();
@@ -279,34 +427,41 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                         // case 1
                         boolean found1 = false;
                         boolean found2 = false;
-                        for (final TypeRelation ab : reflexives) {
+
+                        Queue<TypeRelation> refs = new ArrayDeque<>(reflexives);
+                        while (!refs.isEmpty()) {
+                            final TypeRelation ab = refs.poll();
                             if (ab.getRight().equals(relLeft)) {
                                 final TypeVariable abLeft = (TypeVariable) ab.getLeft();
                                 found1 = true;
                                 // add (ab.left, rel.right) to Reflexives
-                                reflexives.add(new TypeRelation(abLeft, relRight));
+                                final TypeRelation newRel = new TypeRelation(abLeft, relRight);
+                                reflexives.add(newRel);
+                                refs.add(newRel);
                                 // union and set upper bounds of ab.left with upper bounds of rel.right
-                                final Set<Type> union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
+                                final Set<ConcreteType> union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
                                 upperBounds.put(abLeft, union);
                             }
                             if (ab.getLeft().equals(relRight)) {
                                 final TypeVariable abRight = (TypeVariable) ab.getRight();
                                 found2 = true;
                                 // add (rel.left, ab.right) to Reflexives
-                                reflexives.add(new TypeRelation(relLeft, abRight));
+                                final TypeRelation newRel = new TypeRelation(relLeft, abRight);
+                                reflexives.add(newRel);
+                                refs.add(newRel);
                                 // intersect and set lower bounds of ab.right  with lower bounds of rel.left
-                                final Set<Type> intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
+                                final Set<ConcreteType> intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
                                 lowerBounds.put(abRight, intersection);
                             }
                         }
                         if (!found1) {
                             // union and set upper bounds of rel.left with upper bounds of rel.right
-                            final Set<Type> union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
+                            final Set<ConcreteType> union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
                             upperBounds.put(relLeft, union);
                         }
                         if (!found2) {
                             // intersect and set lower bounds of rel.right with lower bounds of rel.left
-                            final Set<Type> intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
+                            final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
                             lowerBounds.put(relRight, intersection);
                         }
                         // add TypeRelation(rel.left, rel.right) to Reflexives
@@ -335,13 +490,13 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 final TypeVariable abLeft = (TypeVariable) ab.getLeft();
                                 found = true;
                                 // union and set upper bounds of ab.left with rel.right
-                                final Set<Type> union = union(getUpperBounds(abLeft), Collections.singleton(relRight));
+                                final Set<ConcreteType> union = union(getUpperBounds(abLeft), Collections.singleton(relRight));
                                 upperBounds.put(abLeft, union);
                             }
                         }
                         if (!found) {
                             // union the upper bounds of rel.left with rel.right
-                            final Set<Type> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
+                            final Set<ConcreteType> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
                             upperBounds.put(relLeft, union);
                         }
                         for (final Type lb : getLowerBounds(relLeft)) {
@@ -365,13 +520,13 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 final TypeVariable abRight = (TypeVariable) ab.getRight();
                                 found = true;
                                 // intersect and set lower bounds of ab.right with rel.left
-                                final Set<Type> intersection = intersection(getLowerBounds(abRight), Collections.singleton(relLeft));
+                                final Set<ConcreteType> intersection = intersection(getLowerBounds(abRight), Collections.singleton(relLeft));
                                 lowerBounds.put(abRight, intersection);
                             }
                         }
                         if (!found) {
                             // intersect and set lower bounds of rel.right with rel.left
-                            final Set<Type> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
+                            final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
                             lowerBounds.put(relRight, intersection);
                         }
                         for (final Type ub : getUpperBounds(relRight)) {
@@ -383,24 +538,37 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                     }
                 }
                 if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof ConcreteType) {
-                    continue;
+                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
+                    final ConcreteType relRight = (ConcreteType) rel.getRight();
+
+                    if (!isExtendsOrEquals(relLeft, relRight)) {
+                        throw new IllegalStateException("");
+                    }
                 }
             }
             queue.size();
 
+            System.out.println("Reflexives:");
+            reflexives.forEach(typeRelation -> {
+                System.out.println(typeRelation);
+            });
+
+            System.out.println("Output:");
             SetUtils.union(lowerBounds.keySet(), upperBounds.keySet()).stream().sorted(Comparator.comparing(TypeVariable::toString))
                     .forEach(typeVariable -> {
-                        final Set<Type> upperBound = getUpperBounds(typeVariable);
-                        final Set<Type> lowerBound = getLowerBounds(typeVariable);
-                        System.out.println(upperBound + " >= " + typeVariable + " >= " + lowerBound);
+                        // UpperBounds keeps track of types which may be supertypes of a type variable
+                        final Set<ConcreteType> upperBound = getUpperBounds(typeVariable);
+                        // LowerBounds keeps track of types which may be subtypes of the type variable
+                        final Set<ConcreteType> lowerBound = getLowerBounds(typeVariable);
+                        System.out.println(lowerBound + " >= " + typeVariable + " >= " + upperBound);
                     });
         }
 
-        public Set<Type> getLowerBounds(final TypeVariable typeVariable) {
+        public Set<ConcreteType> getLowerBounds(final TypeVariable typeVariable) {
             return lowerBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
         }
 
-        public Set<Type> getUpperBounds(final TypeVariable typeVariable) {
+        public Set<ConcreteType> getUpperBounds(final TypeVariable typeVariable) {
             return upperBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
         }
     }
