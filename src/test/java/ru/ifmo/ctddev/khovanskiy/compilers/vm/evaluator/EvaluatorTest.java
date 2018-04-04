@@ -4,18 +4,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.Ignore;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.ASTEvaluatorTest;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Pointer;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.Symbol;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.CompilerContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.VMCompiler;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.Context;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeInferencer;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.PrinterContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.printer.VMPrinter;
 
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.util.Map;
 
 
 /**
@@ -56,12 +54,12 @@ public class EvaluatorTest extends BaseTest {
             final Writer consoleWriter = new PrintWriter(System.out);
             printer.visitProgram(newProgram, new PrinterContext(consoleWriter));
 
-//            final TypeInferencer typeInferencer = new TypeInferencer();
-//            typeInferencer.visitCompilationUnit(testCase.getAst(), new Context());
+            final TypeInferencer typeInferencer = new TypeInferencer();
+            typeInferencer.visitCompilationUnit(testCase.getAst(), new Context());
 
-            final VMEvaluator VMEvaluator = new VMEvaluator();
-            final Map<Pointer, Symbol> externals = ASTEvaluatorTest.defineExternalFunctions(testCase.getReader(), testCase.getWriter());
-            VMEvaluator.evaluate(newProgram, externals);
+//            final VMEvaluator VMEvaluator = new VMEvaluator();
+//            final Map<Pointer, Symbol> externals = ASTEvaluatorTest.defineExternalFunctions(testCase.getReader(), testCase.getWriter());
+//            VMEvaluator.evaluate(newProgram, externals);
         });
     }
 }

@@ -92,6 +92,10 @@ public class Context {
             return renameHolder.rename(name);
         }
 
+        public TypeVariable createTypeVariable() {
+            return new TypeVariable(typeVariableIds.getAndIncrement());
+        }
+
         public TypeVariable getVariableType(final int id) {
             return variables.computeIfAbsent(id, k -> {
                 final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement());

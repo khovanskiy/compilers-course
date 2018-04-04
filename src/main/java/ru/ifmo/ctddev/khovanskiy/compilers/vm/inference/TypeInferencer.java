@@ -75,7 +75,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         throw new IllegalStateException();
     }
 
-    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, Context context) {
+    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, Context context) throws Exception {
         if (memoryAccess instanceof AST.VariableAccessExpression) {
             final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) memoryAccess;
             final String name = variableAccessExpression.getName();
@@ -84,11 +84,10 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
             return (Type) callback;
         }
         if (memoryAccess instanceof AST.ArrayAccessExpression) {
-//            buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), (old) -> {
-//                final Type newType = callback.apply(old);
-//                return ArrayType.of(newType);
-//            }, context);
-            return buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), ArrayType.INSTANCE, context);
+            visitExpression(((AST.ArrayAccessExpression) memoryAccess).getExpression(), context);
+            final Type indexType = context.getScope().popType();
+            context.addTypeRelation(indexType, IntegerType.INSTANCE);
+            return buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), ImplicationType.of(ArrayType.INSTANCE, callback), context);
         }
         throw new IllegalStateException();
     }
@@ -187,7 +186,9 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
 //        assert type instanceof ArrayType;
 //        final Type elementType = ((ArrayType) type).getElementType();
 //        context.getScope().pushType(elementType);
-        context.getScope().pushType(ArrayType.INSTANCE);
+        context.addTypeRelation(indexType, IntegerType.INSTANCE);
+        final Type elementType = context.getScope().createTypeVariable();
+        context.getScope().pushType(ApplicationType.of(arrayType, elementType));
     }
 
     @Override
@@ -241,9 +242,9 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     public static class Evaluator {
-        private final Map<TypeVariable, Set<ConcreteType>> upperBounds = new HashMap<>();
+        private final Map<TypeVariable, ConcreteType> upperBounds = new HashMap<>();
 
-        private final Map<TypeVariable, Set<ConcreteType>> lowerBounds = new HashMap<>();
+        private final Map<TypeVariable, ConcreteType> lowerBounds = new HashMap<>();
 
         private final List<TypeRelation> relations;
 
@@ -276,6 +277,10 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
          * e.g., (String, Object) == true, (Object, String) == false.
          */
         public boolean isExtendsOrEquals(final ConcreteType left, final ConcreteType right) {
+            if (left == null) {
+                return false;
+            }
+            assert right != null;
             final Deque<ConcreteType> first = getInheritanceLine(left);
             final Deque<ConcreteType> second = getInheritanceLine(right);
             if (second.size() > first.size()) {
@@ -303,10 +308,10 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
          * Union computes the common subtype of two concrete types if possible,
          * e.g., (Object, Serializable) == Object&Serializable, (Integer, String) == null.
          */
-        public Set<ConcreteType> union(final Set<ConcreteType> left, final Set<ConcreteType> right) {
-            final List<ConcreteType> union = new ArrayList<>(SetUtils.union(left, right));
+        public ConcreteType union(final ConcreteType left, final ConcreteType right) {
+            final List<ConcreteType> union = Arrays.asList(left, right);
             if (union.isEmpty()) {
-                return Collections.emptySet();
+                return null;
             }
             final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
 
@@ -334,7 +339,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                 }
             }
             assert superType != null;
-            return Collections.singleton(superType);
+            return superType;
         }
 
         public <T extends Collection & Serializable> void f(T t) {
@@ -345,10 +350,16 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
          * Intersection computes the nearest supertype of two concrete types,
          * e.g., (List, Set) == Collection, (Integer, String) == Object.
          */
-        public Set<ConcreteType> intersection(final Set<ConcreteType> left, final Set<ConcreteType> right) {
-            final List<ConcreteType> union = new ArrayList<>(SetUtils.union(left, right));
+        public ConcreteType intersection(final ConcreteType left, final ConcreteType right) {
+            if (left == null) {
+                return right;
+            }
+            if (right == null) {
+                return left;
+            }
+            final List<ConcreteType> union = Arrays.asList(left, right);
             if (union.isEmpty()) {
-                return Collections.emptySet();
+                return ObjectType.INSTANCE;
             }
             final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
 
@@ -377,7 +388,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                 }
             }
             assert superType != null;
-            return Collections.singleton(superType);
+            return superType;
         }
 
         private List<Deque<ConcreteType>> getInheritanceLines(List<ConcreteType> union) {
@@ -439,7 +450,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 reflexives.add(newRel);
                                 refs.add(newRel);
                                 // union and set upper bounds of ab.left with upper bounds of rel.right
-                                final Set<ConcreteType> union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
+                                final ConcreteType union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
                                 upperBounds.put(abLeft, union);
                             }
                             if (ab.getLeft().equals(relRight)) {
@@ -450,29 +461,30 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 reflexives.add(newRel);
                                 refs.add(newRel);
                                 // intersect and set lower bounds of ab.right  with lower bounds of rel.left
-                                final Set<ConcreteType> intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
+                                final ConcreteType intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
                                 lowerBounds.put(abRight, intersection);
                             }
                         }
                         if (!found1) {
                             // union and set upper bounds of rel.left with upper bounds of rel.right
-                            final Set<ConcreteType> union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
+                            final ConcreteType union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
                             upperBounds.put(relLeft, union);
                         }
                         if (!found2) {
                             // intersect and set lower bounds of rel.right with lower bounds of rel.left
-                            final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
+                            final ConcreteType intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
                             lowerBounds.put(relRight, intersection);
                         }
                         // add TypeRelation(rel.left, rel.right) to Reflexives
                         reflexives.add(new TypeRelation(relLeft, relRight));
 
-                        for (final Type lb : getLowerBounds(relLeft)) {
-                            for (final Type ub : getUpperBounds(relRight)) {
+                        final Type lb = getLowerBounds(relLeft);
+                        if (lb != null) {
+                            final Type ub = getUpperBounds(relRight);
                                 // add all SubC(lb, ub) to TypeRelations
                                 final List<TypeRelation> decomposition = subC(lb, ub);
                                 relations.addAll(decomposition);
-                            }
+
                         }
                         continue;
                     }
@@ -482,7 +494,8 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                     final ConcreteType relRight = (ConcreteType) rel.getRight();
 
                     // UpperBound of rel.left does not contain rel.right
-                    if (!getUpperBounds(relLeft).contains(relRight)) {
+                    if (!isExtendsOrEquals(getUpperBounds(relLeft), relRight)) {
+//                    if (!getUpperBounds(relLeft).contains(relRight)) {
                         // case 2
                         boolean found = false;
                         for (final TypeRelation ab : reflexives) {
@@ -490,16 +503,17 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 final TypeVariable abLeft = (TypeVariable) ab.getLeft();
                                 found = true;
                                 // union and set upper bounds of ab.left with rel.right
-                                final Set<ConcreteType> union = union(getUpperBounds(abLeft), Collections.singleton(relRight));
+                                final ConcreteType union = union(getUpperBounds(abLeft), relRight);
                                 upperBounds.put(abLeft, union);
                             }
                         }
-                        if (!found) {
+                        if (true) {//!found) {
                             // union the upper bounds of rel.left with rel.right
-                            final Set<ConcreteType> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
+                            final ConcreteType union = union(getUpperBounds(relLeft), relRight);
                             upperBounds.put(relLeft, union);
                         }
-                        for (final Type lb : getLowerBounds(relLeft)) {
+                        final Type lb = getLowerBounds(relLeft);
+                        if (lb != null) {
                             // add all SubC(lb, rel.right) to TypeRelations
                             final List<TypeRelation> decomposition = subC(lb, relRight);
                             relations.addAll(decomposition);
@@ -512,7 +526,8 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                     final TypeVariable relRight = (TypeVariable) rel.getRight();
 
                     // LowerBound of rel.right does not contain rel.left
-                    if (!getLowerBounds(relRight).contains(rel.getLeft())) {
+                    if (!isExtendsOrEquals(getLowerBounds(relRight), relLeft)) {
+//                    if (!getLowerBounds(relRight).contains(rel.getLeft())) {
                         // case 3
                         boolean found = false;
                         for (final TypeRelation ab : reflexives) {
@@ -520,16 +535,17 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
                                 final TypeVariable abRight = (TypeVariable) ab.getRight();
                                 found = true;
                                 // intersect and set lower bounds of ab.right with rel.left
-                                final Set<ConcreteType> intersection = intersection(getLowerBounds(abRight), Collections.singleton(relLeft));
+                                final ConcreteType intersection = intersection(getLowerBounds(abRight), relLeft);
                                 lowerBounds.put(abRight, intersection);
                             }
                         }
-                        if (!found) {
+                        if (true) {//!found) {
                             // intersect and set lower bounds of rel.right with rel.left
-                            final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
+                            final ConcreteType intersection = intersection(getLowerBounds(relRight), relLeft);
                             lowerBounds.put(relRight, intersection);
                         }
-                        for (final Type ub : getUpperBounds(relRight)) {
+                        final Type ub = getUpperBounds(relRight);
+                        if (ub != null) {
                             // add each SubC(rel.left, ub) to TypeRelations
                             final List<TypeRelation> decomposition = subC(relLeft, ub);
                             relations.addAll(decomposition);
@@ -557,19 +573,19 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
             SetUtils.union(lowerBounds.keySet(), upperBounds.keySet()).stream().sorted(Comparator.comparing(TypeVariable::toString))
                     .forEach(typeVariable -> {
                         // UpperBounds keeps track of types which may be supertypes of a type variable
-                        final Set<ConcreteType> upperBound = getUpperBounds(typeVariable);
+                        final ConcreteType upperBound = getUpperBounds(typeVariable);
                         // LowerBounds keeps track of types which may be subtypes of the type variable
-                        final Set<ConcreteType> lowerBound = getLowerBounds(typeVariable);
+                        final ConcreteType lowerBound = getLowerBounds(typeVariable);
                         System.out.println(lowerBound + " >= " + typeVariable + " >= " + upperBound);
                     });
         }
 
-        public Set<ConcreteType> getLowerBounds(final TypeVariable typeVariable) {
-            return lowerBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
+        public ConcreteType getLowerBounds(final TypeVariable typeVariable) {
+            return lowerBounds.get(typeVariable);
         }
 
-        public Set<ConcreteType> getUpperBounds(final TypeVariable typeVariable) {
-            return upperBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
+        public ConcreteType getUpperBounds(final TypeVariable typeVariable) {
+            return upperBounds.computeIfAbsent(typeVariable, (k) -> ObjectType.INSTANCE);
         }
     }
 }
