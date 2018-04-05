@@ -5,19 +5,23 @@ import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
 import ru.ifmo.ctddev.khovanskiy.compilers.SystemService;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.CompilerContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler.VMCompiler;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeInferencer;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler.X86Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86Printer;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.printer.X86PrinterContext;
 
 import java.io.*;
 
+
 /**
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
 public class EvaluatorTest extends BaseTest {
+    private final SystemService systemService = new SystemService();
+
     @Test
     public void testCore() {
         evaluate("./compiler-tests/core");
@@ -39,49 +43,49 @@ public class EvaluatorTest extends BaseTest {
         evaluate("./compiler-tests/performance");
     }
 
-    private SystemService systemService = new SystemService();
-
-    protected void evaluate(String s) {
+    protected void evaluate(final String s) {
         runTests(s, "./target/temp", (testCase) -> {
-            final VMCompiler compiler = new VMCompiler();
-            final CompilerContext compilerContext = compiler.compile(testCase.getAst());
+            final TypeInferencer typeInferencer = new TypeInferencer();
+            final TypeContext typeContext = typeInferencer.inference(testCase.getAst());
 
-            final VMProgram newProgram = compilerContext.getVmProgram();
+            final VMCompiler compiler = new VMCompiler();
+            final VMProgram newProgram = compiler.compile(testCase.getAst(), typeContext);
+
 //            VMPrinter vmPrinter = new VMPrinter();
 //            vmPrinter.visitProgram(newProgram, new PrinterContext(new PrintWriter(System.out)));
-            File asmFile = new File("./target/temp", testCase.getTestName() + ".s");
-//            testCase.getTemporaryFiles().add(asmFile);
+            final File asmFile = new File("./target/temp", testCase.getTestName() + ".s");
+            testCase.getTemporaryFiles().add(asmFile);
             try (FileWriter asmWriter = new FileWriter(asmFile)) {
-                X86Compiler x86Compiler = new X86Compiler();
+                final X86Compiler x86Compiler = new X86Compiler();
                 final X86Program x86Program = x86Compiler.compile(newProgram);
                 System.out.println("// ----------------------------------------");
-                X86Printer x86Printer = new X86Printer();
+                final X86Printer x86Printer = new X86Printer();
                 x86Printer.visitProgram(x86Program, new X86PrinterContext(asmWriter));
             }
 
-            File objectFile = new File("./target/temp", testCase.getTestName() + ".o");
+            final File objectFile = new File("./target/temp", testCase.getTestName() + ".o");
             testCase.getTemporaryFiles().add(objectFile);
-            systemService.executeForRead(new String[]{"./runtime/compile.sh", "./runtime", "./target/temp/" + testCase.getTestName()}, (inputStream -> {
+            systemService.executeForRead(new String[] {"./runtime/compile.sh", "./runtime", "./target/temp/" + testCase.getTestName()}, (inputStream -> {
                 try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
                     while (compilationReader.ready()) {
                         System.out.println(compilationReader.readLine());
                     }
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
                 return "";
             }));
 
-            File executableFile = new File("./target/temp", testCase.getTestName());
+            final File executableFile = new File("./target/temp", testCase.getTestName());
             testCase.getTemporaryFiles().add(executableFile);
-            systemService.executeForRead(new String[]{"./runtime/run.sh", "./target/temp/" + testCase.getTestName(), testCase.getInputFile().toString()}, (inputStream -> {
+            systemService.executeForRead(new String[] {"./runtime/run.sh", "./target/temp/" + testCase.getTestName(), testCase.getInputFile().toString()}, (inputStream -> {
                 try (BufferedReader compilationReader = new BufferedReader(new InputStreamReader(inputStream))) {
                     while (compilationReader.ready()) {
-                        String line = compilationReader.readLine();
+                        final String line = compilationReader.readLine();
 //                        System.out.println("#" + line);
                         testCase.getWriter().write(line + "\n");
                     }
-                } catch (IOException e) {
+                } catch (final IOException e) {
                     e.printStackTrace();
                 }
                 return "";

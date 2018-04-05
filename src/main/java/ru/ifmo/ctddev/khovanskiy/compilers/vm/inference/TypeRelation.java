@@ -3,8 +3,6 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 import lombok.Getter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.Type;
 
-import java.util.Objects;
-
 
 /**
  * @author Victor Khovanskiy
@@ -27,14 +25,16 @@ public class TypeRelation {
     }
 
     @Override
-    public boolean equals(Object obj) {
-        return obj instanceof TypeRelation
-                && Objects.equals(this.left, ((TypeRelation) obj).left)
-                && Objects.equals(this.right, ((TypeRelation) obj).right);
+    public boolean equals(final Object obj) {
+        if (obj instanceof TypeRelation) {
+            final TypeRelation another = (TypeRelation) obj;
+            return this.left.equals(another.left) && this.right.equals(another.right) || this.left.equals(another.right) && this.right.equals(another.left);
+        }
+        return false;
     }
 
     @Override
     public String toString() {
-        return left + " >= " + right;
+        return left + " == " + right;
     }
 }

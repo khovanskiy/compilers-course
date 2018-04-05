@@ -5,25 +5,40 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.ExceptionConsumer;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
 
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 @Getter
 public class CompilerContext {
-    private VMProgram vmProgram = new VMProgram();
-    private AtomicInteger labelIds = new AtomicInteger(0);
-    private Stack<Scope> scopes = new Stack<>();
+    private final TypeContext typeContext;
 
-    public CompilerContext() {
-//        this.scopes.push(new Scope());
+    private final VMProgram vmProgram = new VMProgram();
+
+    private final AtomicInteger labelIds = new AtomicInteger(0);
+
+    private final Stack<Scope> scopes = new Stack<>();
+
+    public CompilerContext(final TypeContext typeContext) {
+        this.typeContext = typeContext;
+    }
+
+    public Scope wrapFunction(final String name, final ExceptionConsumer<Scope> consumer) throws Exception {
+        Scope scope = new Scope(name);
+        scopes.push(scope);
+        consumer.accept(scope);
+        scope = scopes.pop();
+        return scope;
     }
 
     public void addCommand(final VM command) {
         vmProgram.getFunctions().get(vmProgram.getFunctions().size() - 1).getCommands().add(command);
     }
 
-    public void registerFunction(final String name, int size) {
+    public void registerFunction(final String name, final int size) {
         vmProgram.getFunctions().add(new VMFunction(name, size));
     }
 
@@ -35,10 +50,17 @@ public class CompilerContext {
         return this.scopes.peek();
     }
 
+    @Getter
     public static class Scope {
-        private RenameHolder renameHolder = new RenameHolder();
+        private final RenameHolder renameHolder = new RenameHolder();
 
-        public int rename(String name) {
+        private final String name;
+
+        public Scope(final String name) {
+            this.name = name;
+        }
+
+        public int rename(final String name) {
             return this.renameHolder.rename(name);
         }
     }

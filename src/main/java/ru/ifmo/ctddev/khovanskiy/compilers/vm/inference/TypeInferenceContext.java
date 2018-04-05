@@ -14,12 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 1.0.0
  */
 @Getter
-public class Context {
+class TypeInferenceContext {
     private final Map<String, Scope> functionScopes = new HashMap<>();
-
-//    private final Map<TypeVariable, Set<Type>> upperBounds = new HashMap<>();
-//
-//    private final Map<TypeVariable, Set<Type>> lowerBounds = new HashMap<>();
 
     private final AtomicInteger typeVariableIds = new AtomicInteger(0);
 
@@ -27,25 +23,13 @@ public class Context {
 
     private final Stack<Scope> scopes = new Stack<>();
 
+    private TypeContext typeContext;
+
     public void addTypeRelation(final Type left, final Type right) {
         relations.add(new TypeRelation(left, right));
-//        if (left instanceof TypeVariable) {
-//            getLowerBounds((TypeVariable) left).add(right);
-//        }
-//        if (right instanceof TypeVariable) {
-//            getUpperBounds((TypeVariable) right).add(left);
-//        }
     }
 
-//    public Set<Type> getLowerBounds(final TypeVariable typeVariable) {
-//        return lowerBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
-//    }
-//
-//    public Set<Type> getUpperBounds(final TypeVariable typeVariable) {
-//        return upperBounds.computeIfAbsent(typeVariable, k -> new HashSet<>());
-//    }
-
-    public Context.Scope getScope() {
+    public TypeInferenceContext.Scope getScope() {
         return this.scopes.peek();
     }
 
@@ -60,6 +44,10 @@ public class Context {
         return functionScopes.computeIfAbsent(name, k -> new Scope(name));
     }
 
+    public void setTypeContext(final TypeContext typeContext) {
+        this.typeContext = typeContext;
+    }
+
     @Getter
     public class Scope {
         private final Map<Integer, TypeVariable> variables = new HashMap<>();
@@ -72,7 +60,7 @@ public class Context {
 
         private TypeVariable returnType;
 
-        Scope(String name) {
+        Scope(final String name) {
             this.name = name;
         }
 
@@ -84,10 +72,6 @@ public class Context {
             return typeStack.pop();
         }
 
-        public Type peekType() {
-            return typeStack.peek();
-        }
-
         public int getVariableId(final String name) {
             return renameHolder.rename(name);
         }
@@ -97,16 +81,12 @@ public class Context {
         }
 
         public TypeVariable getVariableType(final int id) {
-            return variables.computeIfAbsent(id, k -> {
-                final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement());
-                System.out.println("Function \"" + name + "\" Variable v" + id + " has type variable: " + typeVariable);
-                return typeVariable;
-            });
+            return getVariableType(id, false);
         }
 
         public TypeVariable getReturnType() {
             if (returnType == null) {
-                returnType = new TypeVariable(typeVariableIds.getAndIncrement());
+                returnType = new TypeVariable(typeVariableIds.getAndIncrement(), name, -1, "return", false);
                 System.out.println("Function \"" + name + "\" has return type variable: " + returnType);
             }
             return returnType;
@@ -117,9 +97,25 @@ public class Context {
             addTypeRelation(returnType, this.returnType);
         }
 
-        public void setVariableType(final int id, Type type) {
-            final TypeVariable typeVariable = getVariableType(id);
+        public void setVariableType(final int id, final Type type) {
+            setVariableType(id, type, false);
+        }
+
+        public void setVariableType(final int id, final Type type, final boolean ignore) {
+            final TypeVariable typeVariable = getVariableType(id, ignore);
             addTypeRelation(type, typeVariable);
+        }
+
+        private TypeVariable getVariableType(final int id, final boolean ignore) {
+            return variables.computeIfAbsent(id, k -> {
+                String variableName = renameHolder.getNameById(id);
+                if (variableName == null) {
+                    variableName = "v" + id;
+                }
+                final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement(), name, id, variableName, ignore);
+                System.out.println("Function \"" + name + "\" Variable v" + id + " has type variable: " + typeVariable);
+                return typeVariable;
+            });
         }
     }
 }

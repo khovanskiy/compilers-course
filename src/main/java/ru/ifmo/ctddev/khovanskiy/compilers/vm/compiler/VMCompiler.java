@@ -1,10 +1,12 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.compiler;
 
 import lombok.extern.slf4j.Slf4j;
-import ru.ifmo.ctddev.khovanskiy.compilers.Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,54 +15,52 @@ import java.util.stream.Collectors;
 
 
 @Slf4j
-public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements Compiler<AST.CompilationUnit, CompilerContext> {
-    @Override
-    public CompilerContext compile(AST.CompilationUnit ast) throws Exception {
-        final CompilerContext program = new CompilerContext();
+public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
+    public VMProgram compile(final AST.CompilationUnit ast, final TypeContext typeContext) throws Exception {
+        final CompilerContext program = new CompilerContext(typeContext);
         visitCompilationUnit(ast, program);
-        return program;
+        return program.getVmProgram();
     }
 
     @Override
-    public void visitCompilationUnit(AST.CompilationUnit compilationUnit, CompilerContext compilerContext) throws Exception {
-        List<AST.SingleStatement> statements = compilationUnit.getCompoundStatement().getStatements();
-        List<AST.FunctionDefinition> functions = statements.stream()
+    public void visitCompilationUnit(final AST.CompilationUnit compilationUnit, final CompilerContext compilerContext) throws Exception {
+        final List<AST.SingleStatement> statements = compilationUnit.getCompoundStatement().getStatements();
+        final List<AST.FunctionDefinition> functions = statements.stream()
                 .filter(AST.FunctionDefinition.class::isInstance)
                 .map(AST.FunctionDefinition.class::cast)
                 .collect(Collectors.toList());
-        List<AST.SingleStatement> mainStatements = statements.stream().filter(s -> !AST.FunctionDefinition.class.isInstance(s))
+        final List<AST.SingleStatement> mainStatements = statements.stream().filter(s -> !AST.FunctionDefinition.class.isInstance(s))
                 .collect(Collectors.toList());
         functions.add(new AST.FunctionDefinition("main", Collections.emptyList(), new AST.CompoundStatement(mainStatements)));
-        for (AST.FunctionDefinition f : functions) {
+        for (final AST.FunctionDefinition f : functions) {
             visitFunctionDefinition(f, compilerContext);
         }
     }
 
     @Override
-    public void visitFunctionDefinition(AST.FunctionDefinition functionDefinition, CompilerContext compilerContext) throws Exception {
+    public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final CompilerContext compilerContext) throws Exception {
         compilerContext.registerFunction(functionDefinition.getName(), functionDefinition.getVariables().size());
 
-//        compilerContext.addCommand(new VM.Label(functionDefinition.getName()));
-        compilerContext.getScopes().push(new CompilerContext.Scope());
-        for (int i = 0; i < functionDefinition.getVariables().size(); ++i) {
-            AST.VariableDefinition variableDefinition = functionDefinition.getVariables().get(i);
-            String name = variableDefinition.getName();
-            final int id = compilerContext.getScope().rename(name);
-            log.info("Function {}: rename variable {} to {}", functionDefinition.getName(), name, id);
-        }
-        visitCompoundStatement(functionDefinition.getCompoundStatement(), compilerContext);
-        final CompilerContext.Scope scope = compilerContext.getScopes().pop();
+        compilerContext.wrapFunction(functionDefinition.getName(), scope -> {
+            for (int i = 0; i < functionDefinition.getVariables().size(); ++i) {
+                final AST.VariableDefinition variableDefinition = functionDefinition.getVariables().get(i);
+                visitVariableDefinition(variableDefinition, compilerContext);
+            }
+            visitCompoundStatement(functionDefinition.getCompoundStatement(), compilerContext);
+        });
     }
 
     @Override
-    public void visitVariableDefinition(AST.VariableDefinition variableDefinition, CompilerContext compilerContext) throws Exception {
-
+    public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final CompilerContext compilerContext) {
+        final String name = variableDefinition.getName();
+        final int id = compilerContext.getScope().rename(name);
+        log.info("Function {}: rename variable {} to {}", compilerContext.getScope().getName(), name, id);
     }
 
     @Override
-    public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, CompilerContext compilerContext) throws Exception {
+    public void visitAssignmentStatement(final AST.AssignmentStatement assignmentStatement, final CompilerContext compilerContext) throws Exception {
         if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
-            AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
+            final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
             final String name = variableAccessExpression.getName();
             final int id = compilerContext.getScope().rename(name);
             // expression
@@ -68,7 +68,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
             //
             compilerContext.addCommand(new VM.IStore(id));
         } else {
-            AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
+            final AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
             visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
             visitExpression(arrayAccessExpression.getExpression(), compilerContext);
             // expression
@@ -79,7 +79,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitIfStatement(AST.IfStatement ifStatement, CompilerContext context) throws Exception {
+    public void visitIfStatement(final AST.IfStatement ifStatement, final CompilerContext context) throws Exception {
         final List<AST.IfCase> cases = ifStatement.getCases();
         final List<String> labels = new ArrayList<>(cases.size());
         for (int i = 0; i < cases.size(); ++i) {
@@ -106,33 +106,33 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitGotoStatement(AST.GotoStatement gotoStatement, CompilerContext compilerContext) throws Exception {
+    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final CompilerContext compilerContext) throws Exception {
         compilerContext.addCommand(new VM.Goto(gotoStatement.getLabel()));
     }
 
     @Override
-    public void visitContinueStatement(AST.ContinueStatement continueStatement, CompilerContext compilerContext) throws Exception {
+    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final CompilerContext compilerContext) throws Exception {
 
     }
 
     @Override
-    public void visitBreakStatement(AST.BreakStatement breakStatement, CompilerContext compilerContext) throws Exception {
+    public void visitBreakStatement(final AST.BreakStatement breakStatement, final CompilerContext compilerContext) throws Exception {
 
     }
 
     @Override
-    public void visitReturnStatement(AST.ReturnStatement returnStatement, CompilerContext compilerContext) throws Exception {
+    public void visitReturnStatement(final AST.ReturnStatement returnStatement, final CompilerContext compilerContext) throws Exception {
         visitExpression(returnStatement.getExpression(), compilerContext);
         compilerContext.addCommand(new VM.IReturn());
     }
 
     @Override
-    public void visitSkipStatement(AST.SkipStatement skipStatement, CompilerContext compilerContext) throws Exception {
+    public void visitSkipStatement(final AST.SkipStatement skipStatement, final CompilerContext compilerContext) throws Exception {
 
     }
 
     @Override
-    public void visitWhileStatement(AST.WhileStatement whileStatement, CompilerContext compilerContext) throws Exception {
+    public void visitWhileStatement(final AST.WhileStatement whileStatement, final CompilerContext compilerContext) throws Exception {
         final String loopLabel = compilerContext.getNextLabel();
         final String endLabel = compilerContext.getNextLabel();
         visitExpression(whileStatement.getCondition(), compilerContext);
@@ -145,7 +145,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitRepeatStatement(AST.RepeatStatement repeatStatement, CompilerContext compilerContext) throws Exception {
+    public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final CompilerContext compilerContext) throws Exception {
         final String label = compilerContext.getNextLabel();
         compilerContext.addCommand(new VM.Label(label));
         visitCompoundStatement(repeatStatement.getCompoundStatement(), compilerContext);
@@ -154,7 +154,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitForStatement(AST.ForStatement forStatement, CompilerContext compilerContext) throws Exception {
+    public void visitForStatement(final AST.ForStatement forStatement, final CompilerContext compilerContext) throws Exception {
         compilerContext.addCommand(new VM.Comment("Start: for"));
         if (forStatement.getInit() != null) {
             visitAssignmentStatement(forStatement.getInit(), compilerContext);
@@ -176,18 +176,18 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitFunctionCall(AST.FunctionCall functionCall, CompilerContext compilerContext) throws Exception {
-        List<AST.Expression> arguments = functionCall.getArguments();
+    public void visitFunctionCall(final AST.FunctionCall functionCall, final CompilerContext compilerContext) throws Exception {
+        final List<AST.Expression> arguments = functionCall.getArguments();
         for (int i = 0; i < arguments.size(); ++i) {
-            AST.Expression expression = arguments.get(i);
+            final AST.Expression expression = arguments.get(i);
             visitExpression(expression, compilerContext);
         }
         compilerContext.addCommand(new VM.InvokeStatic(functionCall.getName(), functionCall.getArguments().size()));
     }
 
     @Override
-    public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, CompilerContext compilerContext) throws Exception {
-        List<AST.Expression> arguments = arrayCreationExpression.getArguments();
+    public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final CompilerContext compilerContext) throws Exception {
+        final List<AST.Expression> arguments = arrayCreationExpression.getArguments();
         final int length = arguments.size();
         compilerContext.addCommand(new VM.IConst(length));
         compilerContext.addCommand(new VM.NewArray());
@@ -200,48 +200,49 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) throws Exception {
-        String name = variableAccessExpression.getName();
+    public void visitVariableAccess(final AST.VariableAccessExpression variableAccessExpression, final CompilerContext compilerContext) throws Exception {
+        final String name = variableAccessExpression.getName();
         if ("true".equals(name)) {
             compilerContext.addCommand(new VM.IConst(1));
         } else if ("false".equals(name)) {
             compilerContext.addCommand(new VM.IConst(0));
         } else {
             final int id = compilerContext.getScope().rename(name);
+            final ConcreteType type = compilerContext.getTypeContext().getScopeByName(compilerContext.getScope().getName()).getVariableType(id);
             compilerContext.addCommand(new VM.ILoad(id));
         }
     }
 
     @Override
-    public void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, CompilerContext compilerContext) throws Exception {
+    public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final CompilerContext compilerContext) throws Exception {
         visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
         visitExpression(arrayAccessExpression.getExpression(), compilerContext);
         compilerContext.addCommand(new VM.IALoad());
     }
 
     @Override
-    public void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, CompilerContext compilerContext) {
+    public void visitVariableAccessForWrite(final AST.VariableAccessExpression variableAccessExpression, final CompilerContext compilerContext) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, CompilerContext compilerContext) throws Exception {
+    public void visitArrayAccessForWrite(final AST.ArrayAccessExpression arrayAccessExpression, final CompilerContext compilerContext) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, CompilerContext compilerContext) throws Exception {
+    public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final CompilerContext compilerContext) throws Exception {
         compilerContext.addCommand(new VM.IConst(integerLiteral.getValue()));
     }
 
     @Override
-    public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, CompilerContext compilerContext) throws Exception {
+    public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final CompilerContext compilerContext) throws Exception {
         final char character = characterLiteral.getValue();
         compilerContext.addCommand(new VM.IConst(character));
     }
 
     @Override
-    public void visitStringLiteral(AST.StringLiteral stringLiteral, CompilerContext compilerContext) throws Exception {
+    public void visitStringLiteral(final AST.StringLiteral stringLiteral, final CompilerContext compilerContext) throws Exception {
         final String string = stringLiteral.getValue();
         final int length = string.length();
         compilerContext.addCommand(new VM.IConst(length));
@@ -255,17 +256,17 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitNullLiteral(AST.NullLiteral nullLiteral, CompilerContext compilerContext) throws Exception {
+    public void visitNullLiteral(final AST.NullLiteral nullLiteral, final CompilerContext compilerContext) throws Exception {
         compilerContext.addCommand(new VM.AConstNull());
     }
 
     @Override
-    public void visitUnaryExpression(AST.UnaryExpression unaryExpression, CompilerContext compilerContext) throws Exception {
+    public void visitUnaryExpression(final AST.UnaryExpression unaryExpression, final CompilerContext compilerContext) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitBinaryExpression(AST.BinaryExpression binaryExpression, CompilerContext compilerContext) throws Exception {
+    public void visitBinaryExpression(final AST.BinaryExpression binaryExpression, final CompilerContext compilerContext) throws Exception {
         visitExpression(binaryExpression.getLeft(), compilerContext);
         visitExpression(binaryExpression.getRight(), compilerContext);
         compilerContext.addCommand(new VM.BinOp(binaryExpression.getOperator()));

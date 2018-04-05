@@ -2,6 +2,9 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type;
 
 import lombok.Getter;
 
+import java.util.Collections;
+import java.util.Set;
+
 
 /**
  * @author Victor Khovanskiy
@@ -31,5 +34,20 @@ public class ObjectType extends ConcreteType {
     @Override
     public String toString() {
         return "<Object>";
+    }
+
+    @Override
+    public boolean isConcreteType() {
+        return true;
+    }
+
+    @Override
+    public Type substitute(final TypeVariable typeVariable, final Type substitution) {
+        return this;
+    }
+
+    @Override
+    public Set<TypeVariable> getTypeVariables() {
+        return Collections.emptySet();
     }
 }

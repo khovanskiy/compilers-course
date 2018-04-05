@@ -3,7 +3,6 @@ package ru.ifmo.ctddev.khovanskiy.compilers;
 import lombok.extern.slf4j.Slf4j;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.junit.Assert;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageLexer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageParser;
@@ -16,7 +15,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -27,7 +25,7 @@ public abstract class BaseTest {
         final List<File> outputFiles = new ArrayList<>();
         try {
             final Stream<Path> testsStream = getTests(inputDirectoryFile);
-            testsStream.skip(0).limit(1).forEach(path -> {
+            testsStream.forEach(path -> {
                 final String testName = path.getFileName().toString().split("\\.")[0];
                 log.info("Run test \"{}\"", path);
                 final File outputDirectoryFile = new File(outputDirectory);
@@ -57,31 +55,31 @@ public abstract class BaseTest {
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-                try (final Scanner orig = new Scanner(new FileReader(originalFile));
-                     final Scanner actual = new Scanner(new FileReader(outputFile))) {
-                    int k = 0;
-                    while (orig.hasNext() && actual.hasNext()) {
-                        final String expected = orig.nextLine();
-                        final String actual2 = actual.nextLine();
-                        Assert.assertEquals("Line #" + k, expected, actual2);
-                    }
-                    boolean extra = orig.hasNext() || actual.hasNext();
-                    if (actual.hasNext()) {
-                        System.out.println("Actual file has extra lines:");
-                        while (actual.hasNext()) {
-                            System.out.println(actual.nextLine());
-                        }
-                    }
-                    if (orig.hasNext()) {
-                        System.out.println("Original file has extra lines:");
-                        while (orig.hasNext()) {
-                            System.out.println(orig.nextLine());
-                        }
-                    }
-                    Assert.assertFalse("There are some extra lines", extra);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
+//                try (final Scanner orig = new Scanner(new FileReader(originalFile));
+//                     final Scanner actual = new Scanner(new FileReader(outputFile))) {
+//                    int k = 0;
+//                    while (orig.hasNext() && actual.hasNext()) {
+//                        final String expected = orig.nextLine();
+//                        final String actual2 = actual.nextLine();
+//                        Assert.assertEquals("Line #" + k, expected, actual2);
+//                    }
+//                    boolean extra = orig.hasNext() || actual.hasNext();
+//                    if (actual.hasNext()) {
+//                        System.out.println("Actual file has extra lines:");
+//                        while (actual.hasNext()) {
+//                            System.out.println(actual.nextLine());
+//                        }
+//                    }
+//                    if (orig.hasNext()) {
+//                        System.out.println("Original file has extra lines:");
+//                        while (orig.hasNext()) {
+//                            System.out.println(orig.nextLine());
+//                        }
+//                    }
+//                    Assert.assertFalse("There are some extra lines", extra);
+//                } catch (Exception e) {
+//                    throw new RuntimeException(e);
+//                }
             });
         } finally {
             outputFiles.forEach(file -> {

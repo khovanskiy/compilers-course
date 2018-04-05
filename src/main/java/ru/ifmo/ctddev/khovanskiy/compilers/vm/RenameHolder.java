@@ -9,16 +9,24 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 1.0.0
  */
 public class RenameHolder {
-    private Map<String, Integer> remapping = new HashMap<>();
-    private AtomicInteger variableIds = new AtomicInteger(0);
+    private final Map<String, Integer> namesToIdsMap = new HashMap<>();
 
-    public int rename(String name) {
-        Integer id = remapping.get(name);
+    private final Map<Integer, String> idsToNamesMap = new HashMap<>();
+
+    private final AtomicInteger variableIds = new AtomicInteger(0);
+
+    public int rename(final String name) {
+        Integer id = namesToIdsMap.get(name);
         if (id == null) {
             id = nextName();
-            remapping.put(name, id);
+            namesToIdsMap.put(name, id);
+            idsToNamesMap.put(id, name);
         }
         return id;
+    }
+
+    public String getNameById(int id) {
+        return idsToNamesMap.get(id);
     }
 
     public int nextName() {

@@ -1,10 +1,10 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 
+import lombok.extern.slf4j.Slf4j;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.*;
 
-import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -13,9 +13,16 @@ import java.util.stream.Collectors;
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
-public class TypeInferencer extends AbstractASTVisitor<Context> {
+@Slf4j
+public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
+    public TypeContext inference(final AST.CompilationUnit compilationUnit) throws Exception {
+        final TypeInferenceContext inferenceContext = new TypeInferenceContext();
+        visitCompilationUnit(compilationUnit, inferenceContext);
+        return inferenceContext.getTypeContext();
+    }
+
     @Override
-    public void visitCompilationUnit(final AST.CompilationUnit compilationUnit, final Context context) throws Exception {
+    public void visitCompilationUnit(final AST.CompilationUnit compilationUnit, final TypeInferenceContext context) throws Exception {
         final List<AST.SingleStatement> statements = compilationUnit.getCompoundStatement().getStatements();
         final List<AST.FunctionDefinition> functions = statements.stream()
                 .filter(AST.FunctionDefinition.class::isInstance)
@@ -24,32 +31,37 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         final List<AST.SingleStatement> mainStatements = statements.stream().filter(s -> !AST.FunctionDefinition.class.isInstance(s))
                 .collect(Collectors.toList());
         functions.add(new AST.FunctionDefinition("main", Collections.emptyList(), new AST.CompoundStatement(mainStatements)));
+
+        initExternalFunctions(context);
+
         for (final AST.FunctionDefinition f : functions) {
             visitFunctionDefinition(f, context);
         }
-        new Evaluator(context.getRelations()).run();
+        final TypeContext typeContext = new Evaluator(context, context.getRelations()).run();
+        context.setTypeContext(typeContext);
     }
 
     @Override
-    public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final Context context) throws Exception {
+    public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final TypeInferenceContext context) throws Exception {
         context.wrapFunction(functionDefinition.getName(), scope -> {
             for (final AST.VariableDefinition variableDefinition : functionDefinition.getVariables()) {
                 visitVariableDefinition(variableDefinition, context);
             }
             visitCompoundStatement(functionDefinition.getCompoundStatement(), context);
-
-//            scope.getTypes().forEach((id, type) -> System.out.println("Variable v" + id + " has type " + type));
         });
     }
 
     @Override
-    public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final Context context) throws Exception {
+    public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final TypeInferenceContext context) throws Exception {
         final String name = variableDefinition.getName();
         final int id = context.getScope().getVariableId(name);
+        if (log.isDebugEnabled()) {
+            log.debug("Variable \"" + name + "\" is mapped to ID = " + id);
+        }
     }
 
     @Override
-    public void visitAssignmentStatement(final AST.AssignmentStatement assignmentStatement, final Context context) throws Exception {
+    public void visitAssignmentStatement(final AST.AssignmentStatement assignmentStatement, final TypeInferenceContext context) throws Exception {
         if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
             final String name = variableAccessExpression.getName();
@@ -75,7 +87,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
         throw new IllegalStateException();
     }
 
-    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, Context context) throws Exception {
+    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, TypeInferenceContext context) throws Exception {
         if (memoryAccess instanceof AST.VariableAccessExpression) {
             final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) memoryAccess;
             final String name = variableAccessExpression.getName();
@@ -93,27 +105,39 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitIfStatement(final AST.IfStatement ifStatement, final Context context) throws Exception {
+    public void visitIfStatement(final AST.IfStatement ifStatement, final TypeInferenceContext context) throws Exception {
+        final List<AST.IfCase> cases = ifStatement.getCases();
+        for (int i = 0; i < cases.size(); ++i) {
+            final AST.IfCase ifCase = cases.get(i);
+            if (ifCase.getCondition() == null) {
+                // else
+                assert i == cases.size() - 1;
+                visitCompoundStatement(ifCase.getCompoundStatement(), context);
+            } else {
+                // if or elif
+                visitExpression(ifCase.getCondition(), context);
+                visitCompoundStatement(ifCase.getCompoundStatement(), context);
+            }
+        }
+    }
+
+    @Override
+    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final Context context) throws Exception {
+    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final Context context) throws Exception {
+    public void visitBreakStatement(final AST.BreakStatement breakStatement, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitBreakStatement(final AST.BreakStatement breakStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void visitReturnStatement(final AST.ReturnStatement returnStatement, final Context context) throws Exception {
+    public void visitReturnStatement(final AST.ReturnStatement returnStatement, final TypeInferenceContext context) throws Exception {
         if (returnStatement.getExpression() != null) {
             visitExpression(returnStatement.getExpression(), context);
             final Type returnType = context.getScope().popType();
@@ -122,22 +146,24 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitSkipStatement(final AST.SkipStatement skipStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+    public void visitSkipStatement(final AST.SkipStatement skipStatement, final TypeInferenceContext context) throws Exception {
+        // do nothing
     }
 
     @Override
-    public void visitWhileStatement(final AST.WhileStatement whileStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+    public void visitWhileStatement(final AST.WhileStatement whileStatement, final TypeInferenceContext context) throws Exception {
+        visitExpression(whileStatement.getCondition(), context);
+        visitCompoundStatement(whileStatement.getCompoundStatement(), context);
     }
 
     @Override
-    public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
+    public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final TypeInferenceContext context) throws Exception {
+        visitExpression(repeatStatement.getCondition(), context);
+        visitCompoundStatement(repeatStatement.getCompoundStatement(), context);
     }
 
     @Override
-    public void visitForStatement(final AST.ForStatement forStatement, final Context context) throws Exception {
+    public void visitForStatement(final AST.ForStatement forStatement, final TypeInferenceContext context) throws Exception {
         if (forStatement.getInit() != null) {
             visitAssignmentStatement(forStatement.getInit(), context);
         }
@@ -151,8 +177,8 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitFunctionCall(final AST.FunctionCall functionCall, final Context context) throws Exception {
-        final Context.Scope functionScope = context.getScopeByName(functionCall.getName());
+    public void visitFunctionCall(final AST.FunctionCall functionCall, final TypeInferenceContext context) throws Exception {
+        final TypeInferenceContext.Scope functionScope = context.getScopeByName(functionCall.getName());
         final List<AST.Expression> arguments = functionCall.getArguments();
         for (int i = 0; i < arguments.size(); ++i) {
             final AST.Expression expression = arguments.get(i);
@@ -165,12 +191,25 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final Context context) throws Exception {
-        context.getScope().pushType(ArrayType.INSTANCE);
+    public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final TypeInferenceContext context) throws Exception {
+        Type elementType = null;
+        for (final AST.Expression expression : arrayCreationExpression.getArguments()) {
+            visitExpression(expression, context);
+            final Type argumentType = context.getScope().popType();
+            if (elementType == null) {
+                elementType = argumentType;
+            } else if (!elementType.equals(argumentType)) {
+                throw new IllegalStateException();
+            }
+        }
+        if (elementType == null) {
+            elementType = context.getScope().createTypeVariable();
+        }
+        context.getScope().pushType(ImplicationType.of(ArrayType.INSTANCE, elementType));
     }
 
     @Override
-    public void visitVariableAccess(final AST.VariableAccessExpression variableAccessExpression, final Context context) throws Exception {
+    public void visitVariableAccess(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) throws Exception {
         final String name = variableAccessExpression.getName();
         final int id = context.getScope().getVariableId(name);
         final Type variableType = context.getScope().getVariableType(id);
@@ -178,7 +217,7 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final Context context) throws Exception {
+    public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) throws Exception {
         visitMemoryAccess(arrayAccessExpression.getPointer(), context);
         final Type arrayType = context.getScope().popType();
         visitExpression(arrayAccessExpression.getExpression(), context);
@@ -192,400 +231,224 @@ public class TypeInferencer extends AbstractASTVisitor<Context> {
     }
 
     @Override
-    public void visitVariableAccessForWrite(final AST.VariableAccessExpression variableAccessExpression, final Context context) throws Exception {
+    public void visitVariableAccessForWrite(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitArrayAccessForWrite(final AST.ArrayAccessExpression arrayAccessExpression, final Context context) throws Exception {
+    public void visitArrayAccessForWrite(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final Context context) throws Exception {
+    public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final TypeInferenceContext context) throws Exception {
         context.getScope().pushType(IntegerType.INSTANCE);
     }
 
     @Override
-    public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final Context context) throws Exception {
+    public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final TypeInferenceContext context) throws Exception {
         context.getScope().pushType(CharacterType.INSTANCE);
     }
 
     @Override
-    public void visitStringLiteral(final AST.StringLiteral stringLiteral, final Context context) throws Exception {
-        context.getScope().pushType(ArrayType.INSTANCE);
+    public void visitStringLiteral(final AST.StringLiteral stringLiteral, final TypeInferenceContext context) throws Exception {
+        context.getScope().pushType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
     }
 
     @Override
-    public void visitNullLiteral(final AST.NullLiteral nullLiteral, final Context context) throws Exception {
+    public void visitNullLiteral(final AST.NullLiteral nullLiteral, final TypeInferenceContext context) throws Exception {
+        context.getScope().pushType(context.getScope().createTypeVariable());
+    }
+
+    @Override
+    public void visitUnaryExpression(final AST.UnaryExpression unaryExpression, final TypeInferenceContext context) throws Exception {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitUnaryExpression(final AST.UnaryExpression unaryExpression, final Context context) throws Exception {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void visitBinaryExpression(final AST.BinaryExpression binaryExpression, final Context context) throws Exception {
+    public void visitBinaryExpression(final AST.BinaryExpression binaryExpression, final TypeInferenceContext context) throws Exception {
         visitExpression(binaryExpression.getLeft(), context);
         final Type leftType = context.getScope().popType();
         visitExpression(binaryExpression.getRight(), context);
         final Type rightType = context.getScope().popType();
 
-        final ConcreteType argumentType = IntegerType.INSTANCE;
-        context.addTypeRelation(leftType, argumentType);
-        context.addTypeRelation(rightType, argumentType);
+        final String operator = binaryExpression.getOperator();
+        if (operator.equals("==") || operator.equals("!=")) {
+            context.addTypeRelation(leftType, rightType);
+        } else {
+            context.addTypeRelation(leftType, IntegerType.INSTANCE);
+            context.addTypeRelation(rightType, IntegerType.INSTANCE);
+        }
 
         final ConcreteType resultType = IntegerType.INSTANCE;
         context.getScope().pushType(resultType);
     }
 
-    public static class Evaluator {
-        private final Map<TypeVariable, ConcreteType> upperBounds = new HashMap<>();
+    private void initExternalFunctions(final TypeInferenceContext context) throws Exception {
+        context.wrapFunction("read", scope -> {
+            scope.setReturnType(IntegerType.INSTANCE);
+        });
+        context.wrapFunction("write", scope -> {
+            scope.setVariableType(0, IntegerType.INSTANCE, true);
+            scope.setReturnType(VoidType.INSTANCE);
+        });
+        context.wrapFunction("strlen", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setReturnType(IntegerType.INSTANCE);
+        });
+        context.wrapFunction("strget", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setVariableType(1, IntegerType.INSTANCE);
+            scope.setReturnType(CharacterType.INSTANCE);
+        });
+        context.wrapFunction("strset", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setVariableType(1, IntegerType.INSTANCE);
+            scope.setVariableType(2, CharacterType.INSTANCE);
+            scope.setReturnType(CharacterType.INSTANCE);
+        });
+        context.wrapFunction("strsub", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setVariableType(1, IntegerType.INSTANCE);
+            scope.setVariableType(2, IntegerType.INSTANCE);
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+        });
+        context.wrapFunction("strdup", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+        });
+        context.wrapFunction("strcat", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setVariableType(1, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+        });
+        context.wrapFunction("strcmp", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setVariableType(1, ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+            scope.setReturnType(IntegerType.INSTANCE);
+        });
+        context.wrapFunction("strmake", scope -> {
+            scope.setVariableType(0, IntegerType.INSTANCE);
+            scope.setVariableType(1, CharacterType.INSTANCE);
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
+        });
+        context.wrapFunction("arrlen", scope -> {
+            scope.setVariableType(0, ImplicationType.of(ArrayType.INSTANCE, scope.createTypeVariable()), true);
+            scope.setReturnType(IntegerType.INSTANCE);
+        });
+        context.wrapFunction("arrmake", scope -> {
+            scope.setVariableType(0, IntegerType.INSTANCE);
+            scope.setVariableType(1, IntegerType.INSTANCE);
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, IntegerType.INSTANCE));
+        });
+        context.wrapFunction("Arrmake", scope -> {
+            scope.setVariableType(0, IntegerType.INSTANCE);
+            scope.setVariableType(1, IntegerType.INSTANCE);
+            scope.setReturnType(ImplicationType.of(ArrayType.INSTANCE, ImplicationType.of(ArrayType.INSTANCE, IntegerType.INSTANCE)));
+        });
+    }
 
-        private final Map<TypeVariable, ConcreteType> lowerBounds = new HashMap<>();
+    public class Evaluator {
+        private final TypeInferenceContext context;
 
-        private final List<TypeRelation> relations;
+        private final Set<TypeRelation> relations = new HashSet<>();
 
-        public Evaluator(List<TypeRelation> relations) {
-            this.relations = relations;
-//            this.relations = new ArrayList<>();
-//            this.relations.add(new TypeRelation(IntegerType.INSTANCE, new TypeVariable(0)));
-//            this.relations.add(new TypeRelation(CharacterType.INSTANCE, new TypeVariable(0)));
-//            this.relations.add(new TypeRelation(new TypeVariable(0), IntegerType.INSTANCE));
-//            for (TypeRelation rel : this.relations) {
-//                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof ConcreteType) {
-//                    final TypeVariable relLeft = (TypeVariable) rel.getLeft();
-//                    final ConcreteType relRight = (ConcreteType) rel.getRight();
-//                    final Set<ConcreteType> union = union(getUpperBounds(relLeft), Collections.singleton(relRight));
-//                    upperBounds.put(relLeft, union);
-////                    getUpperBounds((TypeVariable) rel.getLeft()).add((ConcreteType) rel.getRight());
-//                }
-//                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof TypeVariable) {
-//                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
-//                    final TypeVariable relRight = (TypeVariable) rel.getRight();
-//                    final Set<ConcreteType> intersection = intersection(getLowerBounds(relRight), Collections.singleton(relLeft));
-//                    lowerBounds.put(relRight, intersection);
-////                    getLowerBounds((TypeVariable) rel.getRight()).add((ConcreteType) rel.getLeft());
-//                }
-//            }
+        private final Map<TypeVariable, ConcreteType> types = new HashMap<>();
+
+        public Evaluator(final TypeInferenceContext context, final List<TypeRelation> relations) {
+            this.context = context;
+            this.relations.addAll(relations);
         }
 
-        /**
-         * ExtendsOrEquals can tell about two concrete types if the first extends or equals the second,
-         * e.g., (String, Object) == true, (Object, String) == false.
-         */
-        public boolean isExtendsOrEquals(final ConcreteType left, final ConcreteType right) {
-            if (left == null) {
-                return false;
-            }
-            assert right != null;
-            final Deque<ConcreteType> first = getInheritanceLine(left);
-            final Deque<ConcreteType> second = getInheritanceLine(right);
-            if (second.size() > first.size()) {
-                return false;
-            }
-            int size = second.size(); // lower or equal
-            for (int i = 0; i < size; ++i) {
-                ConcreteType f1 = first.pop();
-                ConcreteType f2 = second.pop();
-                if (!f1.equals(f2)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        /**
-         * SubC is the structural decomposition function, which in this simple case will just return a singleton list containing a new TypeRelation of its parameters.
-         */
-        public List<TypeRelation> subC(final Type left, final Type right) {
-            return Collections.singletonList(new TypeRelation(left, right));
-        }
-
-        /**
-         * Union computes the common subtype of two concrete types if possible,
-         * e.g., (Object, Serializable) == Object&Serializable, (Integer, String) == null.
-         */
-        public ConcreteType union(final ConcreteType left, final ConcreteType right) {
-            final List<ConcreteType> union = Arrays.asList(left, right);
-            if (union.isEmpty()) {
-                return null;
-            }
-            final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
-
-            ConcreteType superType = null;
-            boolean found = false;
-            while (!found) {
-                ConcreteType candidate = null;
-                for (int i = 0; i < union.size(); ++i) {
-                    final Deque<ConcreteType> line = lines.get(i);
-                    if (line.isEmpty()) {
-                        continue;
+        public TypeContext run() {
+//            System.out.println("Relations");
+//            relations.forEach(rel -> {
+//                System.out.println(rel);
+//            });
+            final Set<TypeRelation> toAdd = new LinkedHashSet<>();
+            boolean updated;
+            do {
+                boolean updatedConcreteTypes = false;
+                for (final TypeRelation rel : relations) {
+                    if (rel.getLeft() instanceof TypeVariable && !((TypeVariable) rel.getLeft()).isIgnore()) {
+                        updatedConcreteTypes |= updateTransitiveRelations(toAdd, (TypeVariable) rel.getLeft(), rel.getRight());
                     }
-                    ConcreteType type = line.pop();
-                    if (candidate == null) {
-                        candidate = type;
-                    } else if (!candidate.equals(type)) {
-                        found = true;
+                    if (rel.getRight() instanceof TypeVariable && !((TypeVariable) rel.getRight()).isIgnore()) {
+                        updatedConcreteTypes |= updateTransitiveRelations(toAdd, (TypeVariable) rel.getRight(), rel.getLeft());
+                    }
+                    if (rel.getLeft().isConcreteType() && rel.getRight().isConcreteType() && !rel.getLeft().equals(rel.getRight())) {
+                        throw new IllegalStateException(rel.getLeft() + " is not equal to " + rel.getRight());
                     }
                 }
-                if (candidate == null) {
-                    break;
+                updated = relations.addAll(toAdd);
+                if (log.isTraceEnabled()) {
+                    log.trace("Added " + toAdd.size() + " new relations");
                 }
-                if (!found) {
-                    superType = candidate;
-                }
-            }
-            assert superType != null;
-            return superType;
-        }
-
-        public <T extends Collection & Serializable> void f(T t) {
-
-        }
-
-        /**
-         * Intersection computes the nearest supertype of two concrete types,
-         * e.g., (List, Set) == Collection, (Integer, String) == Object.
-         */
-        public ConcreteType intersection(final ConcreteType left, final ConcreteType right) {
-            if (left == null) {
-                return right;
-            }
-            if (right == null) {
-                return left;
-            }
-            final List<ConcreteType> union = Arrays.asList(left, right);
-            if (union.isEmpty()) {
-                return ObjectType.INSTANCE;
-            }
-            final List<Deque<ConcreteType>> lines = getInheritanceLines(union);
-
-            ConcreteType superType = null;
-            boolean found = false;
-            while (!found) {
-                ConcreteType candidate = null;
-                for (int i = 0; i < union.size(); ++i) {
-                    final Deque<ConcreteType> line = lines.get(i);
-                    if (line.isEmpty()) {
-                        found = true;
+                if (updatedConcreteTypes) {
+                    boolean foundAll = true;
+                    for (final Map.Entry<String, TypeInferenceContext.Scope> entry : context.getFunctionScopes().entrySet()) {
+                        final String functionName = entry.getKey();
+                        final TypeInferenceContext.Scope scope = entry.getValue();
+                        for (final TypeVariable t : scope.getVariables().values()) {
+                            if (types.get(t) == null) {
+                                if (log.isTraceEnabled()) {
+                                    log.trace("Unknown type for " + t);
+                                }
+                                foundAll = false;
+                            }
+                        }
+                    }
+                    if (foundAll) {
+                        if (log.isInfoEnabled()) {
+                            log.info("All types are inferenced");
+                        }
                         break;
                     }
-                    ConcreteType type = line.pop();
-                    if (candidate == null) {
-                        candidate = type;
-                    } else if (!candidate.equals(type)) {
-                        found = true;
-                    }
                 }
-                if (candidate == null) {
-                    break;
+                toAdd.clear();
+            } while (updated);
+//            System.out.println("=====\nNew Relations");
+//            relations.forEach(rel -> {
+//                System.out.println(rel);
+//            });
+            final TypeContext typeContext = new TypeContext();
+            types.forEach((tv, t) -> {
+                final TypeContext.Scope functionScope = typeContext.getScopeByName(tv.getFunctionName());
+                if (tv.getVariableId() >= 0) {
+                    functionScope.setVariableType(tv.getVariableId(), t);
+                } else {
+                    functionScope.setReturnType(t);
                 }
-                if (!found) {
-                    superType = candidate;
+                if (log.isTraceEnabled()) {
+                    log.trace("Type of " + tv + " is " + t);
                 }
-            }
-            assert superType != null;
-            return superType;
-        }
-
-        private List<Deque<ConcreteType>> getInheritanceLines(List<ConcreteType> union) {
-            final List<Deque<ConcreteType>> lines = new ArrayList<>(union.size());
-            for (int i = 0; i < union.size(); ++i) {
-                final ConcreteType current = union.get(i);
-                final Deque<ConcreteType> line = getInheritanceLine(current);
-                lines.add(line);
-            }
-            return lines;
-        }
-
-        private Deque<ConcreteType> getInheritanceLine(ConcreteType type) {
-            final Deque<ConcreteType> line = new ArrayDeque<>();
-            ConcreteType current = type;
-            while (!current.equals(ObjectType.INSTANCE)) {
-                line.push(current);
-                current = current.getParentType();
-            }
-            line.push(current);
-            return line;
-        }
-
-        /**
-         * https://stackoverflow.com/questions/6783463/hindley-milner-algorithm-in-java
-         */
-        public void run() {
-            final Queue<TypeRelation> queue = new ArrayDeque<>();
-            queue.addAll(relations);
-
-            System.out.println("Relations:");
-            queue.forEach(typeRelation -> {
-                System.out.println(typeRelation);
             });
+            return typeContext;
+        }
 
-            final List<TypeRelation> reflexives = new ArrayList<>();
-            while (!queue.isEmpty()) {
-                final TypeRelation rel = queue.poll();
-                System.out.println("Visit " + rel);
-                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof TypeVariable) {
-                    final TypeVariable relLeft = (TypeVariable) rel.getLeft();
-                    final TypeVariable relRight = (TypeVariable) rel.getRight();
-                    final TypeRelation entry = new TypeRelation(relLeft, relRight);
+        private void addRelation(final Set<TypeRelation> set, final TypeRelation rel) {
+            if (rel.getLeft().equals(rel.getRight())) {
+                return;
+            }
+            if (!relations.contains(rel)) {
+                set.add(rel);
+            }
+        }
 
-                    // Reflexives does not have an entry with (left, right)
-                    if (!reflexives.contains(entry)) {
-                        // case 1
-                        boolean found1 = false;
-                        boolean found2 = false;
-
-                        Queue<TypeRelation> refs = new ArrayDeque<>(reflexives);
-                        while (!refs.isEmpty()) {
-                            final TypeRelation ab = refs.poll();
-                            if (ab.getRight().equals(relLeft)) {
-                                final TypeVariable abLeft = (TypeVariable) ab.getLeft();
-                                found1 = true;
-                                // add (ab.left, rel.right) to Reflexives
-                                final TypeRelation newRel = new TypeRelation(abLeft, relRight);
-                                reflexives.add(newRel);
-                                refs.add(newRel);
-                                // union and set upper bounds of ab.left with upper bounds of rel.right
-                                final ConcreteType union = union(getUpperBounds(abLeft), getUpperBounds(relRight));
-                                upperBounds.put(abLeft, union);
-                            }
-                            if (ab.getLeft().equals(relRight)) {
-                                final TypeVariable abRight = (TypeVariable) ab.getRight();
-                                found2 = true;
-                                // add (rel.left, ab.right) to Reflexives
-                                final TypeRelation newRel = new TypeRelation(relLeft, abRight);
-                                reflexives.add(newRel);
-                                refs.add(newRel);
-                                // intersect and set lower bounds of ab.right  with lower bounds of rel.left
-                                final ConcreteType intersection = intersection(getLowerBounds(abRight), getLowerBounds(relLeft));
-                                lowerBounds.put(abRight, intersection);
-                            }
-                        }
-                        if (!found1) {
-                            // union and set upper bounds of rel.left with upper bounds of rel.right
-                            final ConcreteType union = union(getUpperBounds(relLeft), getUpperBounds(relRight));
-                            upperBounds.put(relLeft, union);
-                        }
-                        if (!found2) {
-                            // intersect and set lower bounds of rel.right with lower bounds of rel.left
-                            final ConcreteType intersection = intersection(getLowerBounds(relRight), getLowerBounds(relLeft));
-                            lowerBounds.put(relRight, intersection);
-                        }
-                        // add TypeRelation(rel.left, rel.right) to Reflexives
-                        reflexives.add(new TypeRelation(relLeft, relRight));
-
-                        final Type lb = getLowerBounds(relLeft);
-                        if (lb != null) {
-                            final Type ub = getUpperBounds(relRight);
-                                // add all SubC(lb, ub) to TypeRelations
-                                final List<TypeRelation> decomposition = subC(lb, ub);
-                                relations.addAll(decomposition);
-
-                        }
-                        continue;
-                    }
+        private boolean updateTransitiveRelations(final Set<TypeRelation> toAdd, final TypeVariable typeVariable, final Type type) {
+            for (final TypeRelation ab : relations) {
+                if (ab.getLeft().equals(typeVariable)) {
+                    addRelation(toAdd, new TypeRelation(type, ab.getRight()));
+                } else if (ab.getLeft().getTypeVariables().contains(typeVariable)) {
+                    addRelation(toAdd, new TypeRelation(ab.getLeft().substitute(typeVariable, type), ab.getRight()));
                 }
-                if (rel.getLeft() instanceof TypeVariable && rel.getRight() instanceof ConcreteType) {
-                    final TypeVariable relLeft = (TypeVariable) rel.getLeft();
-                    final ConcreteType relRight = (ConcreteType) rel.getRight();
-
-                    // UpperBound of rel.left does not contain rel.right
-                    if (!isExtendsOrEquals(getUpperBounds(relLeft), relRight)) {
-//                    if (!getUpperBounds(relLeft).contains(relRight)) {
-                        // case 2
-                        boolean found = false;
-                        for (final TypeRelation ab : reflexives) {
-                            if (ab.getRight().equals(rel.getLeft())) {
-                                final TypeVariable abLeft = (TypeVariable) ab.getLeft();
-                                found = true;
-                                // union and set upper bounds of ab.left with rel.right
-                                final ConcreteType union = union(getUpperBounds(abLeft), relRight);
-                                upperBounds.put(abLeft, union);
-                            }
-                        }
-                        if (true) {//!found) {
-                            // union the upper bounds of rel.left with rel.right
-                            final ConcreteType union = union(getUpperBounds(relLeft), relRight);
-                            upperBounds.put(relLeft, union);
-                        }
-                        final Type lb = getLowerBounds(relLeft);
-                        if (lb != null) {
-                            // add all SubC(lb, rel.right) to TypeRelations
-                            final List<TypeRelation> decomposition = subC(lb, relRight);
-                            relations.addAll(decomposition);
-                        }
-                        continue;
-                    }
-                }
-                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof TypeVariable) {
-                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
-                    final TypeVariable relRight = (TypeVariable) rel.getRight();
-
-                    // LowerBound of rel.right does not contain rel.left
-                    if (!isExtendsOrEquals(getLowerBounds(relRight), relLeft)) {
-//                    if (!getLowerBounds(relRight).contains(rel.getLeft())) {
-                        // case 3
-                        boolean found = false;
-                        for (final TypeRelation ab : reflexives) {
-                            if (ab.getLeft().equals(rel.getRight())) {
-                                final TypeVariable abRight = (TypeVariable) ab.getRight();
-                                found = true;
-                                // intersect and set lower bounds of ab.right with rel.left
-                                final ConcreteType intersection = intersection(getLowerBounds(abRight), relLeft);
-                                lowerBounds.put(abRight, intersection);
-                            }
-                        }
-                        if (true) {//!found) {
-                            // intersect and set lower bounds of rel.right with rel.left
-                            final ConcreteType intersection = intersection(getLowerBounds(relRight), relLeft);
-                            lowerBounds.put(relRight, intersection);
-                        }
-                        final Type ub = getUpperBounds(relRight);
-                        if (ub != null) {
-                            // add each SubC(rel.left, ub) to TypeRelations
-                            final List<TypeRelation> decomposition = subC(relLeft, ub);
-                            relations.addAll(decomposition);
-                        }
-                        continue;
-                    }
-                }
-                if (rel.getLeft() instanceof ConcreteType && rel.getRight() instanceof ConcreteType) {
-                    final ConcreteType relLeft = (ConcreteType) rel.getLeft();
-                    final ConcreteType relRight = (ConcreteType) rel.getRight();
-
-                    if (!isExtendsOrEquals(relLeft, relRight)) {
-                        throw new IllegalStateException("");
-                    }
+                if (ab.getRight().equals(type)) {
+                    addRelation(toAdd, new TypeRelation(ab.getLeft(), type));
+                } else if (ab.getRight().getTypeVariables().contains(typeVariable)) {
+                    addRelation(toAdd, new TypeRelation(ab.getLeft(), ab.getRight().substitute(typeVariable, type)));
                 }
             }
-            queue.size();
-
-            System.out.println("Reflexives:");
-            reflexives.forEach(typeRelation -> {
-                System.out.println(typeRelation);
-            });
-
-            System.out.println("Output:");
-            SetUtils.union(lowerBounds.keySet(), upperBounds.keySet()).stream().sorted(Comparator.comparing(TypeVariable::toString))
-                    .forEach(typeVariable -> {
-                        // UpperBounds keeps track of types which may be supertypes of a type variable
-                        final ConcreteType upperBound = getUpperBounds(typeVariable);
-                        // LowerBounds keeps track of types which may be subtypes of the type variable
-                        final ConcreteType lowerBound = getLowerBounds(typeVariable);
-                        System.out.println(lowerBound + " >= " + typeVariable + " >= " + upperBound);
-                    });
-        }
-
-        public ConcreteType getLowerBounds(final TypeVariable typeVariable) {
-            return lowerBounds.get(typeVariable);
-        }
-
-        public ConcreteType getUpperBounds(final TypeVariable typeVariable) {
-            return upperBounds.computeIfAbsent(typeVariable, (k) -> ObjectType.INSTANCE);
+            return type.isConcreteType() && types.put(typeVariable, (ConcreteType) type) == null;
         }
     }
 }

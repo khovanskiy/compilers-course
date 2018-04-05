@@ -10,7 +10,7 @@ public abstract class VM {
     public static class Comment extends VM {
         private final String text;
 
-        public Comment(String text) {
+        public Comment(final String text) {
             this.text = text;
         }
     }
@@ -30,7 +30,17 @@ public abstract class VM {
     public static class IStore extends Store {
         private final int name;
 
-        public IStore(int id) {
+        public IStore(final int id) {
+            this.name = id;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class AStore extends Store {
+        private final int name;
+
+        public AStore(final int id) {
             this.name = id;
         }
     }
@@ -38,6 +48,11 @@ public abstract class VM {
     @Getter
     @ToString
     public static class IAStore extends Store {
+    }
+
+    @Getter
+    @ToString
+    public static class AAStore extends Store {
     }
 
     @Getter
@@ -50,7 +65,17 @@ public abstract class VM {
     public static class ILoad extends Load {
         private final int name;
 
-        public ILoad(int id) {
+        public ILoad(final int id) {
+            this.name = id;
+        }
+    }
+
+    @Getter
+    @ToString
+    public static class ALoad extends Load {
+        private final int name;
+
+        public ALoad(final int id) {
             this.name = id;
         }
     }
@@ -58,6 +83,11 @@ public abstract class VM {
     @Getter
     @ToString
     public static class IALoad extends Load {
+    }
+
+    @Getter
+    @ToString
+    public static class AALoad extends Load {
     }
 
     public static class Push extends VM {
@@ -75,7 +105,7 @@ public abstract class VM {
     public abstract static class Const<T> extends VM {
         private final T value;
 
-        protected Const(T value) {
+        protected Const(final T value) {
             this.value = value;
         }
     }
@@ -83,7 +113,7 @@ public abstract class VM {
     @Getter
     @ToString
     public abstract static class AConst<T> extends Const<T> {
-        protected AConst(T value) {
+        protected AConst(final T value) {
             super(value);
         }
     }
@@ -99,7 +129,7 @@ public abstract class VM {
     @Getter
     @ToString
     public static class IConst extends Const<Integer> {
-        public IConst(int value) {
+        public IConst(final int value) {
             super(value);
         }
     }
@@ -109,7 +139,7 @@ public abstract class VM {
     public static class BinOp extends VM {
         private final String operator;
 
-        public BinOp(String operator) {
+        public BinOp(final String operator) {
             this.operator = operator;
         }
     }
@@ -125,7 +155,7 @@ public abstract class VM {
         private final String name;
         private final int argumentsCount;
 
-        public InvokeStatic(String name, int argumentsCount) {
+        public InvokeStatic(final String name, final int argumentsCount) {
             this.name = name;
             this.argumentsCount = argumentsCount;
         }
@@ -155,7 +185,7 @@ public abstract class VM {
     public static class Label extends VM {
         private final String name;
 
-        public Label(String name) {
+        public Label(final String name) {
             this.name = name;
         }
     }
@@ -166,7 +196,7 @@ public abstract class VM {
         private final String name;
         private final int argumentsCount;
 
-        public Begin(String name, int argumentsCount) {
+        public Begin(final String name, final int argumentsCount) {
             this.name = name;
             this.argumentsCount = argumentsCount;
         }
@@ -177,7 +207,7 @@ public abstract class VM {
     public static class Goto extends VM {
         private final String label;
 
-        public Goto(String label) {
+        public Goto(final String label) {
             this.label = label;
         }
     }
@@ -187,7 +217,7 @@ public abstract class VM {
     public static class IfTrue extends VM {
         private final String label;
 
-        public IfTrue(String label) {
+        public IfTrue(final String label) {
             this.label = label;
         }
     }
@@ -197,7 +227,7 @@ public abstract class VM {
     public static class IfFalse extends VM {
         private final String label;
 
-        public IfFalse(String label) {
+        public IfFalse(final String label) {
             this.label = label;
         }
     }
