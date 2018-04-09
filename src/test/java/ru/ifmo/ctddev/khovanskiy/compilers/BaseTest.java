@@ -47,7 +47,7 @@ public abstract class BaseTest {
                 }
                 final File originalFile = new File(path.getParent().toFile(), "orig/" + testName + ".log");
                 final File outputFile = new File(outputDirectoryFile, testName + ".log");
-                outputFiles.add(outputFile);
+//                outputFiles.add(outputFile);
                 try (final FileReader reader = new FileReader(inputFile);
                      final FileWriter writer = new FileWriter(outputFile)) {
                     final AST.CompilationUnit ast = parseAST(testFile);

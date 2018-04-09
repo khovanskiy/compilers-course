@@ -123,17 +123,17 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
 
     @Override
     public void visitGotoStatement(final AST.GotoStatement gotoStatement, final TypeInferenceContext context) throws Exception {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
     public void visitContinueStatement(final AST.ContinueStatement continueStatement, final TypeInferenceContext context) throws Exception {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
     public void visitBreakStatement(final AST.BreakStatement breakStatement, final TypeInferenceContext context) throws Exception {
-        throw new UnsupportedOperationException();
+        // do nothing
     }
 
     @Override
@@ -142,6 +142,8 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
             visitExpression(returnStatement.getExpression(), context);
             final Type returnType = context.getScope().popType();
             context.getScope().setReturnType(returnType);
+        } else {
+            context.getScope().setReturnType(VoidType.INSTANCE);
         }
     }
 

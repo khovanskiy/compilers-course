@@ -24,6 +24,8 @@ public class CompilerContext {
 
     private final Stack<Scope> scopes = new Stack<>();
 
+    private final Stack<Loop> loops = new Stack<>();
+
     public CompilerContext(final TypeContext typeContext) {
         this.typeContext = typeContext;
     }
@@ -34,6 +36,14 @@ public class CompilerContext {
         consumer.accept(scope);
         scope = scopes.pop();
         return scope;
+    }
+
+    public Loop wrapLoop(final String loopLabel, final String endLabel, final ExceptionConsumer<Loop> consumer) throws Exception {
+        Loop loop = new Loop(loopLabel, endLabel);
+        loops.push(loop);
+        consumer.accept(loop);
+        loop = loops.pop();
+        return loop;
     }
 
     public void addCommand(final VM command) {
@@ -52,6 +62,10 @@ public class CompilerContext {
         return this.scopes.peek();
     }
 
+    public Loop getLoop() {
+        return this.loops.peek();
+    }
+
     @Getter
     public static class Scope {
         private final RenameHolder renameHolder = new RenameHolder();
@@ -64,6 +78,17 @@ public class CompilerContext {
 
         public int rename(final String name) {
             return this.renameHolder.rename(name);
+        }
+    }
+
+    @Getter
+    public static class Loop {
+        private final String loopLabel;
+        private final String endLabel;
+
+        public Loop(String loopLabel, String endLabel) {
+            this.loopLabel = loopLabel;
+            this.endLabel = endLabel;
         }
     }
 }

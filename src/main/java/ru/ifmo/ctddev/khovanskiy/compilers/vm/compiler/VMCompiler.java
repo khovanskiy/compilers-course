@@ -137,18 +137,18 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
     }
 
     @Override
-    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final CompilerContext compilerContext) throws Exception {
+    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final CompilerContext compilerContext) {
         compilerContext.addCommand(new VM.Goto(gotoStatement.getLabel()));
     }
 
     @Override
-    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final CompilerContext compilerContext) throws Exception {
-
+    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final CompilerContext compilerContext) {
+        compilerContext.addCommand(new VM.Goto(compilerContext.getLoop().getLoopLabel()));
     }
 
     @Override
-    public void visitBreakStatement(final AST.BreakStatement breakStatement, final CompilerContext compilerContext) throws Exception {
-
+    public void visitBreakStatement(final AST.BreakStatement breakStatement, final CompilerContext compilerContext) {
+        compilerContext.addCommand(new VM.Goto(compilerContext.getLoop().getEndLabel()));
     }
 
     @Override
@@ -170,7 +170,7 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
 
     @Override
     public void visitSkipStatement(final AST.SkipStatement skipStatement, final CompilerContext compilerContext) throws Exception {
-
+        // do nothing
     }
 
     @Override
@@ -180,19 +180,25 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
         visitExpression(whileStatement.getCondition(), compilerContext);
         compilerContext.addCommand(new VM.IfFalse(endLabel));
         compilerContext.addCommand(new VM.Label(loopLabel));
-        visitCompoundStatement(whileStatement.getCompoundStatement(), compilerContext);
-        visitExpression(whileStatement.getCondition(), compilerContext);
-        compilerContext.addCommand(new VM.IfTrue(loopLabel));
+        compilerContext.wrapLoop(loopLabel, endLabel, loop -> {
+            visitCompoundStatement(whileStatement.getCompoundStatement(), compilerContext);
+            visitExpression(whileStatement.getCondition(), compilerContext);
+            compilerContext.addCommand(new VM.IfTrue(loopLabel));
+        });
         compilerContext.addCommand(new VM.Label(endLabel));
     }
 
     @Override
     public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final CompilerContext compilerContext) throws Exception {
-        final String label = compilerContext.getNextLabel();
-        compilerContext.addCommand(new VM.Label(label));
-        visitCompoundStatement(repeatStatement.getCompoundStatement(), compilerContext);
-        visitExpression(repeatStatement.getCondition(), compilerContext);
-        compilerContext.addCommand(new VM.IfFalse(label));
+        final String loopLabel = compilerContext.getNextLabel();
+        final String endLabel = compilerContext.getNextLabel();
+        compilerContext.addCommand(new VM.Label(loopLabel));
+        compilerContext.wrapLoop(loopLabel, endLabel, loop -> {
+            visitCompoundStatement(repeatStatement.getCompoundStatement(), compilerContext);
+            visitExpression(repeatStatement.getCondition(), compilerContext);
+            compilerContext.addCommand(new VM.IfFalse(loopLabel));
+        });
+        compilerContext.addCommand(new VM.Label(endLabel));
     }
 
     @Override
@@ -203,16 +209,20 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
         }
         final String loopLabel = compilerContext.getNextLabel();
         final String endLabel = compilerContext.getNextLabel();
+        final String continueLabel = compilerContext.getNextLabel();
         compilerContext.addCommand(new VM.Label(loopLabel));
-        if (forStatement.getCondition() != null) {
-            visitExpression(forStatement.getCondition(), compilerContext);
-            compilerContext.addCommand(new VM.IfFalse(endLabel));
-        }
-        visitCompoundStatement(forStatement.getCompoundStatement(), compilerContext);
-        if (forStatement.getLoop() != null) {
-            visitAssignmentStatement(forStatement.getLoop(), compilerContext);
-        }
-        compilerContext.addCommand(new VM.Goto(loopLabel));
+        compilerContext.wrapLoop(continueLabel, endLabel, loop -> {
+            if (forStatement.getCondition() != null) {
+                visitExpression(forStatement.getCondition(), compilerContext);
+                compilerContext.addCommand(new VM.IfFalse(endLabel));
+            }
+            visitCompoundStatement(forStatement.getCompoundStatement(), compilerContext);
+            compilerContext.addCommand(new VM.Label(continueLabel));
+            if (forStatement.getLoop() != null) {
+                visitAssignmentStatement(forStatement.getLoop(), compilerContext);
+            }
+            compilerContext.addCommand(new VM.Goto(loopLabel));
+        });
         compilerContext.addCommand(new VM.Label(endLabel));
         compilerContext.addCommand(new VM.Comment("End: for"));
     }

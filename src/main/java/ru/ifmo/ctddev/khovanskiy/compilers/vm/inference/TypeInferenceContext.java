@@ -1,6 +1,7 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.Type;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.TypeVariable;
@@ -14,6 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @since 1.0.0
  */
 @Getter
+@Slf4j
 class TypeInferenceContext {
     private final Map<String, Scope> functionScopes = new HashMap<>();
 
@@ -87,7 +89,9 @@ class TypeInferenceContext {
         public TypeVariable getReturnType() {
             if (returnType == null) {
                 returnType = new TypeVariable(typeVariableIds.getAndIncrement(), name, -1, "return", false);
-                System.out.println("Function \"" + name + "\" has return type variable: " + returnType);
+                if (log.isTraceEnabled()) {
+                    log.trace("Function \"" + name + "\" has return type variable: " + returnType);
+                }
             }
             return returnType;
         }
@@ -113,7 +117,9 @@ class TypeInferenceContext {
                     variableName = "v" + id;
                 }
                 final TypeVariable typeVariable = new TypeVariable(typeVariableIds.getAndIncrement(), name, id, variableName, ignore);
-                System.out.println("Function \"" + name + "\" Variable v" + id + " has type variable: " + typeVariable);
+                if (log.isTraceEnabled()) {
+                    log.trace("Function \"" + name + "\" Variable v" + id + " has type variable: " + typeVariable);
+                }
                 return typeVariable;
             });
         }
