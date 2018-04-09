@@ -58,7 +58,7 @@ public class EvaluatorTest extends BaseTest {
             try (FileWriter asmWriter = new FileWriter(asmFile)) {
                 final X86Compiler x86Compiler = new X86Compiler();
                 final X86Program x86Program = x86Compiler.compile(newProgram);
-                System.out.println("// ----------------------------------------");
+
                 final X86Printer x86Printer = new X86Printer();
                 x86Printer.visitProgram(x86Program, new X86PrinterContext(asmWriter));
             }

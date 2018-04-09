@@ -2,11 +2,13 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler;
 
 import lombok.Getter;
 import lombok.Setter;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.MemoryAccess;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.StackPosition;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Eax;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,14 +25,14 @@ public class CompilerContext {
     private final Stack<MemoryAccess> stack = new Stack<>();
 
     public CompilerContext() {
-        registers.add(new RegisterEntry(Ebx.INSTANCE));
-        registers.add(new RegisterEntry(Ecx.INSTANCE));
-        registers.add(new RegisterEntry(Edi.INSTANCE));
-        registers.add(new RegisterEntry(Esi.INSTANCE));
+//        registers.add(new RegisterEntry(Ebx.INSTANCE));
+//        registers.add(new RegisterEntry(Ecx.INSTANCE));
+//        registers.add(new RegisterEntry(Edi.INSTANCE));
+//        registers.add(new RegisterEntry(Esi.INSTANCE));
     }
 
-    public void enterScope() {
-        scopes.push(new Scope());
+    public void enterScope(String name) {
+        scopes.push(new Scope(name));
     }
 
     public Scope leaveScope() {
@@ -45,30 +47,32 @@ public class CompilerContext {
         commands.add(command);
     }
 
-    public void registerArgument(int id) {
+    public StackPosition registerArgument(int id, final ConcreteType type) {
         final Scope scope = getScope();
-        final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable());
+        final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable(type));
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Argument is already allocated on stack");
         }
         final StackPosition stackPosition = new StackPosition(4 + (id + 1) * 4);
         variable.setStackPosition(stackPosition);
+        return stackPosition;
     }
 
     /**
      * https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
-     *
-     * @param id the variable ID
+     *  @param id   the variable ID
+     * @param type the variable type
      */
-    public void registerVariable(int id) {
+    public StackPosition registerVariable(int id, final ConcreteType type) {
         final Scope scope = getScope();
-        final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable());
+        final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable(type));
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Variable is already allocated on stack");
         }
         final StackPosition stackPosition = new StackPosition(-4 - scope.getAllocated());
         scope.setAllocated(scope.getAllocated() + 4);
         variable.setStackPosition(stackPosition);
+        return stackPosition;
     }
 
     public void wrapInvoke(Consumer<Scope> consumer) {
@@ -157,11 +161,11 @@ public class CompilerContext {
         stack.push(memoryAccess);
     }
 
-    public MemoryAccess get(int id) {
+    public StackPosition get(int id) {
         final Scope scope = getScope();
         final Variable variable = scope.getVariables().get(id);
         if (variable == null) {
-            throw new IllegalStateException(String.format("Unknown variable \"%d\"", id));
+            throw new IllegalStateException(String.format("Function \"\": unknown variable \"%d\"", id));
         }
         assert variable.getStackPosition() != null;
         return variable.getStackPosition();
@@ -183,8 +187,13 @@ public class CompilerContext {
     public static class Scope {
         private final List<X86> commands = new ArrayList<>();
         private final Map<Integer, Variable> variables = new HashMap<>();
+        private final String name;
         private int allocated;
         private int maxAllocated;
+
+        public Scope(String name) {
+            this.name = name;
+        }
 
         public void addCommand(X86 command) {
             commands.add(command);
@@ -197,12 +206,20 @@ public class CompilerContext {
             }
         }
 
+        public boolean isVariable(MemoryAccess memoryAccess) {
+            return memoryAccess instanceof StackPosition &&
+                    variables.values().stream().map(Variable::getStackPosition).anyMatch(memoryAccess::equals);
+        }
+
         public void move(MemoryAccess source, MemoryAccess destination) {
             if (Register.class.isInstance(source) || Register.class.isInstance(destination)) {
                 addCommand(new X86.MovL(source, destination));
             } else if (Immediate.class.isInstance(source)) {
                 addCommand(new X86.MovL(source, destination));
             } else {
+//                assert source instanceof StackPosition;
+//                assert destination instanceof StackPosition;
+
                 addCommand(new X86.MovL(source, Eax.INSTANCE));
                 addCommand(new X86.MovL(Eax.INSTANCE, destination));
             }
@@ -212,7 +229,11 @@ public class CompilerContext {
     @Getter
     @Setter
     public static class Variable {
+        private final ConcreteType type;
         private StackPosition stackPosition;
-//        private Register register;
+
+        public Variable(ConcreteType type) {
+            this.type = type;
+        }
     }
 }

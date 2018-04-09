@@ -7,7 +7,9 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.ExceptionConsumer;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 
+import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -38,8 +40,8 @@ public class CompilerContext {
         vmProgram.getFunctions().get(vmProgram.getFunctions().size() - 1).getCommands().add(command);
     }
 
-    public void registerFunction(final String name, final int size) {
-        vmProgram.getFunctions().add(new VMFunction(name, size));
+    public void registerFunction(final String name, final int argumentsCount, List<ConcreteType> types, ConcreteType returnType) {
+        vmProgram.getFunctions().add(new VMFunction(name, argumentsCount, types, returnType));
     }
 
     public String getNextLabel() {

@@ -23,13 +23,21 @@ public interface VMVisitor<C> {
 
     void visitIStore(VM.IStore iStore, C c) throws Exception;
 
+    void visitAStore(VM.AStore aStore, C c) throws Exception;
+
     void visitIAStore(VM.IAStore iaStore, C c) throws Exception;
+
+    void visitAAStore(VM.AAStore aaStore, C c) throws Exception;
 
     void visitLoad(VM.Load load, C c) throws Exception;
 
     void visitILoad(VM.ILoad iLoad, C c) throws Exception;
 
+    void visitALoad(VM.ALoad aLoad, C c) throws Exception;
+
     void visitIALoad(VM.IALoad iaLoad, C c) throws Exception;
+
+    void visitAALoad(VM.AALoad aaLoad, C c) throws Exception;
 
     void visitLabel(VM.Label label, C c) throws Exception;
 
@@ -52,6 +60,8 @@ public interface VMVisitor<C> {
     void visitReturn(VM.Return vmReturn, C c) throws Exception;
 
     void visitIReturn(VM.IReturn iReturn, C c) throws Exception;
+
+    void visitAReturn(VM.AReturn aReturn, C c) throws Exception;
 
     void visitGoto(VM.Goto vmGoto, C c) throws Exception;
 

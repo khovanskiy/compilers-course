@@ -22,4 +22,9 @@ public class StackPosition extends MemoryAccess {
         this.position = position;
         this.register = register;
     }
+
+    @Override
+    public String toString() {
+        return position + "(" + register + ")";
+    }
 }

@@ -6,7 +6,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor.AbstractASTVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,9 +39,12 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
 
     @Override
     public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final CompilerContext compilerContext) throws Exception {
-        compilerContext.registerFunction(functionDefinition.getName(), functionDefinition.getVariables().size());
-
         compilerContext.wrapFunction(functionDefinition.getName(), scope -> {
+            final TypeContext.Scope typeScope = compilerContext.getTypeContext().getScopeByName(scope.getName());
+            final List<ConcreteType> types = typeScope.getVariableTypes();
+            final ConcreteType returnType = typeScope.getReturnType();
+            compilerContext.registerFunction(functionDefinition.getName(), functionDefinition.getVariables().size(), types, returnType);
+
             for (int i = 0; i < functionDefinition.getVariables().size(); ++i) {
                 final AST.VariableDefinition variableDefinition = functionDefinition.getVariables().get(i);
                 visitVariableDefinition(variableDefinition, compilerContext);
@@ -66,7 +69,14 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
             // expression
             visitExpression(assignmentStatement.getExpression(), compilerContext);
             //
-            compilerContext.addCommand(new VM.IStore(id));
+            final ConcreteType type = compilerContext.getTypeContext().getScopeByName(compilerContext.getScope().getName()).getVariableType(id);
+            if (type.equals(IntegerType.INSTANCE)) {
+                compilerContext.addCommand(new VM.IStore(id));
+            } else if (type.equals(CharacterType.INSTANCE)) {
+                compilerContext.addCommand(new VM.IStore(id));
+            } else {
+                compilerContext.addCommand(new VM.AStore(id));
+            }
         } else {
             final AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
             visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
@@ -74,8 +84,29 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
             // expression
             visitExpression(assignmentStatement.getExpression(), compilerContext);
             //
-            compilerContext.addCommand(new VM.IAStore());
+            final Type elementType = getArrayType(arrayAccessExpression.getPointer(), compilerContext).getRight();
+            if (elementType.equals(IntegerType.INSTANCE)) {
+                compilerContext.addCommand(new VM.IAStore());
+            } else if (elementType.equals(CharacterType.INSTANCE)) {
+                compilerContext.addCommand(new VM.IAStore());
+            } else {
+                compilerContext.addCommand(new VM.AAStore());
+            }
         }
+    }
+
+    private ImplicationType getArrayType(final AST.MemoryAccessExpression memoryAccess, final CompilerContext compilerContext) {
+        if (memoryAccess instanceof AST.VariableAccessExpression) {
+            final String name = ((AST.VariableAccessExpression) memoryAccess).getName();
+            final int id = compilerContext.getScope().rename(name);
+            return (ImplicationType) compilerContext.getTypeContext().getScopeByName(compilerContext.getScope().getName()).getVariableType(id);
+        }
+        if (memoryAccess instanceof AST.ArrayAccessExpression) {
+            ConcreteType concreteType = getArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), compilerContext);
+            assert ImplicationType.class.isInstance(concreteType);
+            return (ImplicationType) ((ImplicationType) concreteType).getRight();
+        }
+        throw new IllegalStateException();
     }
 
     @Override
@@ -122,8 +153,19 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
 
     @Override
     public void visitReturnStatement(final AST.ReturnStatement returnStatement, final CompilerContext compilerContext) throws Exception {
-        visitExpression(returnStatement.getExpression(), compilerContext);
-        compilerContext.addCommand(new VM.IReturn());
+        if (returnStatement.getExpression() != null) {
+            visitExpression(returnStatement.getExpression(), compilerContext);
+        }
+        final ConcreteType returnType = compilerContext.getTypeContext().getScopeByName(compilerContext.getScope().getName()).getReturnType();
+        if (returnType.equals(VoidType.INSTANCE)) {
+            compilerContext.addCommand(new VM.Return());
+        } else if (returnType.equals(IntegerType.INSTANCE)) {
+            compilerContext.addCommand(new VM.IReturn());
+        } else if (returnType.equals(CharacterType.INSTANCE)) {
+            compilerContext.addCommand(new VM.IReturn());
+        } else {
+            compilerContext.addCommand(new VM.AReturn());
+        }
     }
 
     @Override
@@ -209,7 +251,13 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
         } else {
             final int id = compilerContext.getScope().rename(name);
             final ConcreteType type = compilerContext.getTypeContext().getScopeByName(compilerContext.getScope().getName()).getVariableType(id);
-            compilerContext.addCommand(new VM.ILoad(id));
+            if (type.equals(IntegerType.INSTANCE)) {
+                compilerContext.addCommand(new VM.ILoad(id));
+            } else if (type.equals(CharacterType.INSTANCE)) {
+                compilerContext.addCommand(new VM.ILoad(id));
+            } else {
+                compilerContext.addCommand(new VM.ALoad(id));
+            }
         }
     }
 
@@ -217,7 +265,14 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
     public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final CompilerContext compilerContext) throws Exception {
         visitMemoryAccess(arrayAccessExpression.getPointer(), compilerContext);
         visitExpression(arrayAccessExpression.getExpression(), compilerContext);
-        compilerContext.addCommand(new VM.IALoad());
+        final Type elementType = getArrayType(arrayAccessExpression.getPointer(), compilerContext).getRight();
+        if (elementType.equals(IntegerType.INSTANCE)) {
+            compilerContext.addCommand(new VM.IALoad());
+        } else if (elementType.equals(CharacterType.INSTANCE)) {
+            compilerContext.addCommand(new VM.IALoad());
+        } else {
+            compilerContext.addCommand(new VM.AALoad());
+        }
     }
 
     @Override

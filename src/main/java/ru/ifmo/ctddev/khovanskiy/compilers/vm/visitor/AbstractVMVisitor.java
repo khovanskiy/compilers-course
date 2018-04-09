@@ -94,8 +94,16 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
             visitIStore((VM.IStore) store, c);
             return;
         }
+        if (store instanceof VM.AStore) {
+            visitAStore((VM.AStore) store, c);
+            return;
+        }
         if (store instanceof VM.IAStore) {
             visitIAStore((VM.IAStore) store, c);
+            return;
+        }
+        if (store instanceof VM.AAStore) {
+            visitAAStore((VM.AAStore) store, c);
             return;
         }
         throw new IllegalStateException();
@@ -107,8 +115,16 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
             visitILoad((VM.ILoad) load, c);
             return;
         }
+        if (load instanceof VM.ALoad) {
+            visitALoad((VM.ALoad) load, c);
+            return;
+        }
         if (load instanceof VM.IALoad) {
             visitIALoad((VM.IALoad) load, c);
+            return;
+        }
+        if (load instanceof VM.AALoad) {
+            visitAALoad((VM.AALoad) load, c);
             return;
         }
         throw new IllegalStateException();
@@ -153,6 +169,10 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
         }
         if (command instanceof VM.IReturn) {
             visitIReturn((VM.IReturn) command, c);
+            return;
+        }
+        if (command instanceof VM.AReturn) {
+            visitAReturn((VM.AReturn) command, c);
             return;
         }
         throw new IllegalStateException();

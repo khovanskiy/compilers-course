@@ -16,4 +16,9 @@ public abstract class Register extends MemoryAccess {
     public boolean equals(Object obj) {
         return this.getClass().isInstance(obj);
     }
+
+    @Override
+    public String toString() {
+        return "%" + this.getClass().getSimpleName().toLowerCase();
+    }
 }

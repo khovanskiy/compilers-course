@@ -182,6 +182,12 @@ public abstract class VM {
 
     @Getter
     @ToString
+    public static class AReturn extends AbstractReturn<Object> {
+
+    }
+
+    @Getter
+    @ToString
     public static class Label extends VM {
         private final String name;
 

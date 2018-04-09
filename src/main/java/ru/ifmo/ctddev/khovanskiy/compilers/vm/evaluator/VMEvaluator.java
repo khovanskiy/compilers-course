@@ -76,6 +76,15 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     public void visitIStore(VM.IStore store, EvaluatorContext context) throws Exception {
         final VariablePointer pointer = new VariablePointer(getVariableName(store.getName()));
         final Symbol<Object> symbol = context.getStack().pop();
+        assert Integer.class.isInstance(symbol.getValue());
+        context.put(pointer, symbol);
+    }
+
+    @Override
+    public void visitAStore(VM.AStore store, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(store.getName()));
+        final Symbol<Object> symbol = context.getStack().pop();
+        assert List.class.isInstance(symbol.getValue());
         context.put(pointer, symbol);
     }
 
@@ -93,16 +102,43 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
         final List array = (List) arraySymbol.getValue();
         assert Integer.class.isInstance(indexSymbol.getValue()) : "Array index class is not integer: " + indexSymbol.getValue().getClass();
         final int index = (int) indexSymbol.getValue();
+        assert Integer.class.isInstance(valueSymbol.getValue());
         array.set(index, valueSymbol.getValue());
     }
 
     @Override
-    public void visitILoad(VM.ILoad load, EvaluatorContext context) throws Exception {
+    @SuppressWarnings("unchecked")
+    public void visitAAStore(VM.AAStore aaStore, EvaluatorContext context) {
+        final Symbol<Object> valueSymbol = context.getStack().pop();
+        final Symbol<Object> indexSymbol = context.getStack().pop();
+        final Symbol<Object> arraySymbol = context.getStack().pop();
+        assert List.class.isInstance(arraySymbol.getValue());
+        final List array = (List) arraySymbol.getValue();
+        assert Integer.class.isInstance(indexSymbol.getValue()) : "Array index class is not integer: " + indexSymbol.getValue().getClass();
+        final int index = (int) indexSymbol.getValue();
+        assert List.class.isInstance(valueSymbol.getValue());
+        array.set(index, valueSymbol.getValue());
+    }
+
+    @Override
+    public void visitILoad(VM.ILoad load, EvaluatorContext context) {
         final VariablePointer pointer = new VariablePointer(getVariableName(load.getName()));
         final Symbol<Object> symbol = context.get(pointer, Object.class);
         if (symbol == null) {
             throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
         }
+        assert Integer.class.isInstance(symbol.getValue());
+        context.getStack().add(symbol);
+    }
+
+    @Override
+    public void visitALoad(VM.ALoad load, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(load.getName()));
+        final Symbol<Object> symbol = context.get(pointer, Object.class);
+        if (symbol == null) {
+            throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
+        }
+        assert List.class.isInstance(symbol.getValue());
         context.getStack().add(symbol);
     }
 
@@ -114,7 +150,23 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
         final List array = (List) arraySymbol.getValue();
         assert Integer.class.isInstance(indexSymbol.getValue()) : "Array index class is not integer: " + indexSymbol.getValue().getClass();
         final int index = (int) indexSymbol.getValue();
-        final Symbol<Object> valueSymbol = new Symbol<>(array.get(index));
+        Object value = array.get(index);
+        assert Integer.class.isInstance(value);
+        final Symbol<Object> valueSymbol = new Symbol<>(value);
+        context.getStack().push(valueSymbol);
+    }
+
+    @Override
+    public void visitAALoad(VM.AALoad aaLoad, EvaluatorContext context) {
+        final Symbol<Object> indexSymbol = context.getStack().pop();
+        final Symbol<Object> arraySymbol = context.getStack().pop();
+        assert List.class.isInstance(arraySymbol.getValue());
+        final List array = (List) arraySymbol.getValue();
+        assert Integer.class.isInstance(indexSymbol.getValue()) : "Array index class is not integer: " + indexSymbol.getValue().getClass();
+        final int index = (int) indexSymbol.getValue();
+        Object value = array.get(index);
+        assert List.class.isInstance(value);
+        final Symbol<Object> valueSymbol = new Symbol<>(value);
         context.getStack().push(valueSymbol);
     }
 
@@ -185,9 +237,20 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void visitIReturn(VM.IReturn iReturn, EvaluatorContext context) {
         context.getScopes().pop();
         Symbol<Integer> value = context.getStack().pop();
+        final Position position = context.getCallStack().pop();
+        context.setPosition(position);
+        context.getStack().push(value);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void visitAReturn(VM.AReturn aReturn, EvaluatorContext context) {
+        context.getScopes().pop();
+        Symbol<Object> value = context.getStack().pop();
         final Position position = context.getCallStack().pop();
         context.setPosition(position);
         context.getStack().push(value);

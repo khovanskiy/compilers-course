@@ -3,9 +3,13 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm.inference;
 import lombok.Getter;
 import lombok.Setter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.VoidType;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 /**
@@ -26,10 +30,17 @@ public class TypeContext {
 
         private final String name;
 
-        private ConcreteType returnType;
+        private ConcreteType returnType = VoidType.INSTANCE;
 
         public Scope(final String name) {
             this.name = name;
+        }
+
+        public List<ConcreteType> getVariableTypes() {
+            return variableTypes.entrySet().stream()
+                    .sorted(Comparator.comparing(Map.Entry::getKey))
+                    .map(Map.Entry::getValue)
+                    .collect(Collectors.toList());
         }
 
         public ConcreteType getVariableType(final int id) {

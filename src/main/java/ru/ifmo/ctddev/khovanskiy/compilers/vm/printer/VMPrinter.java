@@ -46,18 +46,38 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     }
 
     @Override
+    public void visitAStore(VM.AStore store, PrinterContext context) throws IOException {
+        context.printLine("a_store v" + store.getName());
+    }
+
+    @Override
     public void visitIAStore(VM.IAStore iaStore, PrinterContext context) throws IOException {
         context.printLine("i_a_store");
     }
 
     @Override
+    public void visitAAStore(VM.AAStore aaStore, PrinterContext context) throws IOException {
+        context.printLine("a_a_store");
+    }
+
+    @Override
     public void visitILoad(VM.ILoad load, PrinterContext context) throws IOException {
-        context.printLine("load v" + load.getName());
+        context.printLine("i_load v" + load.getName());
+    }
+
+    @Override
+    public void visitALoad(VM.ALoad load, PrinterContext context) throws IOException {
+        context.printLine("a_load v" + load.getName());
     }
 
     @Override
     public void visitIALoad(VM.IALoad iaLoad, PrinterContext context) throws IOException {
         context.printLine("i_a_load");
+    }
+
+    @Override
+    public void visitAALoad(VM.AALoad aaLoad, PrinterContext context) throws IOException {
+        context.printLine("a_a_load");
     }
 
     @Override
@@ -93,6 +113,11 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     @Override
     public void visitIReturn(VM.IReturn iReturn, PrinterContext context) throws IOException {
         context.printLine("i_return");
+    }
+
+    @Override
+    public void visitAReturn(VM.AReturn aReturn, PrinterContext context) throws IOException {
+        context.printLine("a_return");
     }
 
     @Override

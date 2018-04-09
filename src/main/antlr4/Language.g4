@@ -93,7 +93,7 @@ jumpStatement returns [AST.JumpStatement ast]
     }
     |   'return' expression?
     {
-        $ast = new AST.ReturnStatement($expression.ast);
+        $ast = new AST.ReturnStatement($expression.ctx == null ? null : $expression.ast);
     }
     |   'skip'
     {
