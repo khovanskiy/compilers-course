@@ -61,7 +61,7 @@ reference* gc_assign(reference* source, reference* destination) {
     }
     if (destination->meta != 0) {
         destination->meta->count--;
-        if (destination->meta->count == 0) {
+        if (destination->meta->count <= 0) {
             free(destination->meta);
             free(destination->data);
         }
@@ -82,9 +82,9 @@ reference* gc_acquire(reference* ref) {
 }
 
 reference* gc_return(reference* ref) {
-    logger_debug("before gc_return [count = %d]\n", ref->meta->count);
+    logger_debug("before gc_return [count = %d, life = %d]\n", ref->meta->count, ref->meta->life);
     ref->meta->life++;
-    logger_debug("after gc_return [count = %d]\n", ref->meta->count);
+    logger_debug("after gc_return [count = %d, life = %d]\n", ref->meta->count, ref->meta->life);
     return ref;
 }
 
@@ -106,7 +106,7 @@ reference* gc_release(reference* ref) {
     if (ref->meta == 0) {
         return ref;
     }
-    logger_debug("before gc_release [count = %d]\n", ref->meta->count);
+    logger_debug("before gc_release [count = %d, life = %d]\n", ref->meta->count, ref->meta->life);
     ref->meta->count--;
     if (ref->meta->count == 0) {
         if (ref->meta->life == 0) {
@@ -118,7 +118,7 @@ reference* gc_release(reference* ref) {
         }
         ref->meta->life--;
     }
-    logger_debug("after gc_release [count = %d]\n", ref->meta->count);
+    logger_debug("after gc_release [count = %d, life = %d]\n", ref->meta->count, ref->meta->life);
     return ref;
 }
 

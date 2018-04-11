@@ -77,6 +77,9 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         }
         super.visitFunction(function, compilerContext);
 
+//        compilerContext.addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.Label(returnLabel(function.getName())));
+
         if (GC) {
             compilerContext.getScope().addCommand(new X86.PushL(Eax.INSTANCE));
             for (int i = 0; i < localVariablesCount; ++i) {
@@ -102,8 +105,11 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
         compilerContext.addCommand(new X86.MovL(Ebp.INSTANCE, Esp.INSTANCE));
         compilerContext.addCommand(new X86.PopL(Ebp.INSTANCE));
-//        compilerContext.addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
         compilerContext.addCommand(new X86.Ret());
+    }
+
+    protected String returnLabel(final String functionName) {
+        return functionName + "_end";
     }
 
     protected boolean isReferenceType(ConcreteType type) {
@@ -439,6 +445,12 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
             final MemoryAccess temporary = compilerContext.allocate();
             compilerContext.getScope().move(Eax.INSTANCE, temporary);
         }
+    }
+
+    @Override
+    public void visitAbstractReturn(VM.AbstractReturn command, CompilerContext compilerContext) throws Exception {
+        super.visitAbstractReturn(command, compilerContext);
+        compilerContext.getScope().addCommand(new X86.Jmp(returnLabel(compilerContext.getScope().getName())));
     }
 
     @Override
