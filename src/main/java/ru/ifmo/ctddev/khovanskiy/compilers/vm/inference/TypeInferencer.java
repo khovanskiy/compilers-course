@@ -127,6 +127,11 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
+    public void visitLabelStatement(AST.LabelStatement labelStatement, TypeInferenceContext typeInferenceContext) {
+        // do nothing
+    }
+
+    @Override
     public void visitContinueStatement(final AST.ContinueStatement continueStatement, final TypeInferenceContext context) throws Exception {
         // do nothing
     }

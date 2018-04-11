@@ -156,17 +156,22 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
 
     @Override
     public void visitGotoStatement(AST.GotoStatement gotoStatement, EvaluatorContext evaluatorContext) {
+        throw new UnsupportedOperationException();
+    }
 
+    @Override
+    public void visitLabelStatement(AST.LabelStatement labelStatement, EvaluatorContext context) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void visitContinueStatement(AST.ContinueStatement continueStatement, EvaluatorContext evaluatorContext) {
-
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitBreakStatement(AST.BreakStatement breakStatement, EvaluatorContext evaluatorContext) throws Exception {
-
+    public void visitBreakStatement(AST.BreakStatement breakStatement, EvaluatorContext evaluatorContext) {
+        throw new UnsupportedOperationException();
     }
 
     @Override

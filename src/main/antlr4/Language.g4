@@ -83,6 +83,10 @@ jumpStatement returns [AST.JumpStatement ast]
     {
         $ast = new AST.GotoStatement($label.text);
     }
+    |   name=Identifier ':'
+    {
+        $ast = new AST.LabelStatement($name.text);
+    }
     |   'continue'
     {
         $ast = new AST.ContinueStatement();

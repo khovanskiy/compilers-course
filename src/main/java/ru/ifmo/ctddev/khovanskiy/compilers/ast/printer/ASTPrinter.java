@@ -79,6 +79,11 @@ public class ASTPrinter extends AbstractASTVisitor<PrinterContext> {
     }
 
     @Override
+    public void visitLabelStatement(AST.LabelStatement labelStatement, PrinterContext context) throws IOException {
+        context.append(labelStatement + ":");
+    }
+
+    @Override
     public void visitContinueStatement(AST.ContinueStatement continueStatement, PrinterContext context) throws IOException {
         context.append("continue");
     }

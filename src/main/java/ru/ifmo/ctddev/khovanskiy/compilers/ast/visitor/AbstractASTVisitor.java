@@ -77,6 +77,10 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
             visitGotoStatement((AST.GotoStatement) jumpStatement, c);
             return;
         }
+        if (jumpStatement instanceof AST.LabelStatement) {
+            visitLabelStatement((AST.LabelStatement) jumpStatement, c);
+            return;
+        }
         if (jumpStatement instanceof AST.ContinueStatement) {
             visitContinueStatement((AST.ContinueStatement) jumpStatement, c);
             return;

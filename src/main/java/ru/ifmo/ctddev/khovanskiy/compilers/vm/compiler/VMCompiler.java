@@ -142,6 +142,11 @@ public class VMCompiler extends AbstractASTVisitor<CompilerContext> {
     }
 
     @Override
+    public void visitLabelStatement(AST.LabelStatement labelStatement, CompilerContext compilerContext) {
+        compilerContext.addCommand(new VM.Label(labelStatement.getName()));
+    }
+
+    @Override
     public void visitContinueStatement(final AST.ContinueStatement continueStatement, final CompilerContext compilerContext) {
         compilerContext.addCommand(new VM.Goto(compilerContext.getLoop().getLoopLabel()));
     }

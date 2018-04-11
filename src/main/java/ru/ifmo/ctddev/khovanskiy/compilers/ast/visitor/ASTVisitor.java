@@ -27,6 +27,8 @@ public interface ASTVisitor<C> {
 
     void visitGotoStatement(AST.GotoStatement gotoStatement, C c) throws Exception;
 
+    void visitLabelStatement(AST.LabelStatement labelStatement, C c) throws Exception;
+
     void visitContinueStatement(AST.ContinueStatement continueStatement, C c) throws Exception;
 
     void visitBreakStatement(AST.BreakStatement breakStatement, C c) throws Exception;

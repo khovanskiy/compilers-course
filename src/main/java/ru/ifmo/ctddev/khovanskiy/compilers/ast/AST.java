@@ -113,6 +113,16 @@ public abstract class AST {
 
     @Getter
     @ToString
+    public static class LabelStatement extends JumpStatement {
+        private final String name;
+
+        public LabelStatement(final String name) {
+            this.name = name;
+        }
+    }
+
+    @Getter
+    @ToString
     public static class ContinueStatement extends JumpStatement {
 
     }
