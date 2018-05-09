@@ -3,6 +3,7 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler;
 import lombok.Getter;
 import lombok.Setter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ImplicationType;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.IntegerType;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ObjectType;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
@@ -48,21 +49,34 @@ public class CompilerContext {
         commands.add(command);
     }
 
+    /**
+     * Registers the argument at the stack
+     *
+     * @param id   the argument ID
+     * @param type the argument type
+     * @return the stack position
+     * @since 1.0.0
+     */
     public StackPosition registerArgument(int id, final ConcreteType type) {
         final Scope scope = getScope();
         final Variable variable = scope.getVariables().computeIfAbsent(id, (k) -> new Variable(type));
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Argument is already allocated on stack");
         }
-        final StackPosition stackPosition = new StackPosition(4 + (id + 1) * 4);
+        final int returnAddressSize = getSizeByType(IntegerType.INSTANCE);
+        final int ebpSize = getSizeByType(IntegerType.INSTANCE);
+        final StackPosition stackPosition = new StackPosition(ebpSize + returnAddressSize + id * getSizeByType(type), type);
         variable.setStackPosition(stackPosition);
         return stackPosition;
     }
 
     /**
+     * Registers the local variable at the stack
+     *
      * @param id   the variable ID
      * @param type the variable type
-     * @link https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
+     * @see <a href="https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm">Writing to stack as local variable in _start function (x86 ASM)</a>
+     * @since 1.0.0
      */
     public StackPosition registerVariable(int id, final ConcreteType type) {
         final Scope scope = getScope();
@@ -70,12 +84,19 @@ public class CompilerContext {
         if (variable.getStackPosition() != null) {
             throw new IllegalStateException("Variable is already allocated on stack");
         }
-        final StackPosition stackPosition = new StackPosition(-4 - scope.getAllocated());
-        scope.setAllocated(scope.getAllocated() + 4);
+        final int ebpSize = getSizeByType(IntegerType.INSTANCE);
+        final StackPosition stackPosition = new StackPosition(-ebpSize - scope.getAllocated(), type);
+        scope.setAllocated(scope.getAllocated() + getSizeByType(type));
         variable.setStackPosition(stackPosition);
         return stackPosition;
     }
 
+    /**
+     * Wraps the compilation of function invoke
+     *
+     * @param consumer the consumer of new scope
+     * @since 1.0.0
+     */
     public void wrapInvoke(Consumer<Scope> consumer) {
         final Scope scope = getScope();
         final List<Register> stored = new ArrayList<>();
@@ -110,8 +131,9 @@ public class CompilerContext {
             }
         }
         final Scope scope = getScope();
-        stack.push(new StackPosition(-4 - scope.getAllocated()));
-        scope.setAllocated(scope.getAllocated() + 4);
+        final int ebpSize = getSizeByType(IntegerType.INSTANCE);
+        stack.push(new StackPosition(-ebpSize - scope.getAllocated(), type));
+        scope.setAllocated(scope.getAllocated() + getSizeByType(type));
         return stack.peek();
     }
 
@@ -145,7 +167,7 @@ public class CompilerContext {
                 }
             }
         }
-        scope.setAllocated(scope.getAllocated() - 4);
+        scope.setAllocated(scope.getAllocated() - getSizeByType(current.getType()));
     }
 
     public void dup() {
@@ -181,9 +203,11 @@ public class CompilerContext {
      * @since 1.1.0
      */
     public int getSizeByType(ConcreteType type) {
-        if (IntegerType.INSTANCE.equals(type)) {
+        if (type instanceof IntegerType) {
             return 4;
-        } else if (ObjectType.INSTANCE.equals(type)) {
+        } else if (type instanceof ImplicationType) {
+            return 4;
+        } else if (type instanceof ObjectType) {
             return 4;
         } else {
             throw new IllegalArgumentException("Unknown size of type: " + type);
