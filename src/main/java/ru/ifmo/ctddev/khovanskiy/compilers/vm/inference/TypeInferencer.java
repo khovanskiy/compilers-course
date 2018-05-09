@@ -10,14 +10,22 @@ import java.util.stream.Collectors;
 
 
 /**
+ * Type inferencer
+ *
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
 @Slf4j
 public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
-    public TypeContext inference(final AST.CompilationUnit compilationUnit) {
+    /**
+     * Compiles the abstract syntax tree to the virtual machine code
+     *
+     * @param ast the ast of program
+     * @since 1.0.0
+     */
+    public TypeContext inference(final AST.CompilationUnit ast) {
         final TypeInferenceContext inferenceContext = new TypeInferenceContext();
-        visitCompilationUnit(compilationUnit, inferenceContext);
+        visitCompilationUnit(ast, inferenceContext);
         return inferenceContext.getTypeContext();
     }
 

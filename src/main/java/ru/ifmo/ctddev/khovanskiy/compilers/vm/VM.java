@@ -5,6 +5,12 @@ import lombok.ToString;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.NullPointer;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 
+/**
+ * Abstract virtual machine command
+ *
+ * @author Victor Khovanskiy
+ * @since 1.0.0
+ */
 public abstract class VM {
     @Getter
     @ToString
@@ -91,16 +97,6 @@ public abstract class VM {
     public static class AALoad extends Load {
     }
 
-    public static class Push extends VM {
-
-    }
-
-    @Getter
-    @ToString
-    public static class Pop extends VM {
-
-    }
-
     @Getter
     @ToString
     public abstract static class Const<T> extends VM {
@@ -172,21 +168,16 @@ public abstract class VM {
     @Getter
     @ToString
     public static class Return extends AbstractReturn<Void> {
-        public Return() {
-        }
     }
 
     @Getter
     @ToString
     public static class IReturn extends AbstractReturn<Integer> {
-        public IReturn() {
-        }
     }
 
     @Getter
     @ToString
     public static class AReturn extends AbstractReturn<Object> {
-
     }
 
     @Getter
@@ -244,26 +235,5 @@ public abstract class VM {
     @Getter
     @ToString
     public static class NewArray extends VM {
-
     }
-
-//    @Getter
-//    @ToString
-//    public static class Var extends VM {
-//        private final String name;
-//
-//        public Var(String name) {
-//            this.name = name;
-//        }
-//    }
-//
-//    @Getter
-//    @ToString
-//    public static class Array extends VM {
-//        private final int index;
-//
-//        public Array(int index) {
-//            this.index = index;
-//        }
-//    }
 }

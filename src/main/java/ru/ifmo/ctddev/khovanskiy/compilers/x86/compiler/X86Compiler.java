@@ -216,7 +216,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         // reference
         compilerContext.getScope().addCommand(new X86.MovL(array, Edx.INSTANCE));
         // reference->data
-        compilerContext.getScope().addCommand(new X86.MovL(new StackPosition(REFERENCE_DATA_OFFSET, Edx.INSTANCE), Edx.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.MovL(new StackPosition(REFERENCE_DATA_OFFSET, Edx.INSTANCE, ObjectType.INSTANCE), Edx.INSTANCE));
 
         // index
         compilerContext.getScope().addCommand(new X86.MovL(index, Eax.INSTANCE));
@@ -228,7 +228,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         // reference->data[offset + index]
         compilerContext.getScope().addCommand(new X86.AddL(new Immediate(ARRAY_OFFSET), Edx.INSTANCE));
 
-        return new StackPosition(0, Edx.INSTANCE);
+        return new StackPosition(0, Edx.INSTANCE, elementType);
     }
 
     @Override
