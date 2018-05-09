@@ -9,67 +9,289 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
  * @since 1.0.0
  */
 public interface VMVisitor<C> {
-    void visitProgram(VMProgram vmProgram, C c) throws Exception;
+    /**
+     * Visits the virtual machine program
+     *
+     * @param vmProgram the program
+     * @param context   the context
+     * @since 1.0.0
+     */
+    void visitProgram(VMProgram vmProgram, C context);
 
-    void visitFunction(VMFunction function, C c) throws Exception;
+    /**
+     * Visits the function
+     *
+     * @param function the function
+     * @param context  the context
+     * @since 1.0.0
+     */
+    void visitFunction(VMFunction function, C context);
 
-    void visitCommand(VM vm, C c) throws Exception;
+    /**
+     * Visits the abstract command
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitCommand(VM command, C context);
 
-    void visitComment(VM.Comment comment, C c) throws Exception;
+    /**
+     * Visits the comment command
+     *
+     * @param comment the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitComment(VM.Comment comment, C context);
 
-    void visitDup(VM.Dup dup, C c) throws Exception;
+    /**
+     * Visits the duplication element on the top of stack
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitDup(VM.Dup command, C context);
 
-    void visitStore(VM.Store store, C c) throws Exception;
+    /**
+     * Visits the abstract storing to variable
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitStore(VM.Store command, C context);
 
-    void visitIStore(VM.IStore iStore, C c) throws Exception;
+    /**
+     * Visits the storing to integer variable
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIStore(VM.IStore command, C context);
 
-    void visitAStore(VM.AStore aStore, C c) throws Exception;
+    /**
+     * Visits the storing to reference variable
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAStore(VM.AStore command, C context);
 
-    void visitIAStore(VM.IAStore iaStore, C c) throws Exception;
+    /**
+     * Visits the storing integer element to array
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIAStore(VM.IAStore command, C context);
 
-    void visitAAStore(VM.AAStore aaStore, C c) throws Exception;
+    /**
+     * Visits the storing reference element to array
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAAStore(VM.AAStore command, C context);
 
-    void visitLoad(VM.Load load, C c) throws Exception;
+    /**
+     * Visits the abstract loading from variable
+     *
+     * @param command the command
+     * @param context the context
+     */
+    void visitLoad(VM.Load command, C context);
 
-    void visitILoad(VM.ILoad iLoad, C c) throws Exception;
+    /**
+     * Visits the loading from integer variable
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitILoad(VM.ILoad command, C context);
 
-    void visitALoad(VM.ALoad aLoad, C c) throws Exception;
+    /**
+     * Visits the loading from reference variable
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitALoad(VM.ALoad command, C context);
 
-    void visitIALoad(VM.IALoad iaLoad, C c) throws Exception;
+    /**
+     * Visits the loading integer element from array
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIALoad(VM.IALoad command, C context);
 
-    void visitAALoad(VM.AALoad aaLoad, C c) throws Exception;
+    /**
+     * Visits the loading reference element from array
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAALoad(VM.AALoad command, C context);
 
-    void visitLabel(VM.Label label, C c) throws Exception;
+    /**
+     * Visits the label
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitLabel(VM.Label command, C context);
 
-    void visitBinOp(VM.BinOp binOp, C c) throws Exception;
+    /**
+     * Visits the abstract binary command
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitBinOp(VM.BinOp command, C context);
 
-    void visitConst(VM.Const vmConst, C c) throws Exception;
+    /**
+     * Visits the abstract const
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitConst(VM.Const command, C context);
 
-    void visitAConst(VM.AConst aConst, C c) throws Exception;
+    /**
+     * Visits the reference const
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAConst(VM.AConst command, C context);
 
-    void visitAConstNull(VM.AConstNull aConstNull, C c) throws Exception;
+    /**
+     * Visits the "null" reference const
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAConstNull(VM.AConstNull command, C context);
 
-    void visitIConst(VM.IConst iConst, C c) throws Exception;
+    /**
+     * Visits the integer const
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIConst(VM.IConst command, C context);
 
-    void visitAbstractInvoke(VM.AbstractInvoke abstractInvoke, C c) throws Exception;
+    /**
+     * Visits the abstract invoke
+     *
+     * @param command the command
+     * @param context the context
+     */
+    void visitAbstractInvoke(VM.AbstractInvoke command, C context);
 
-    void visitInvokeStatic(VM.InvokeStatic call, C c) throws Exception;
+    /**
+     * Visits the static function invoke
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitInvokeStatic(VM.InvokeStatic command, C context);
 
-    void visitAbstractReturn(VM.AbstractReturn abstractReturn, C c) throws Exception;
+    /**
+     * Visits the abstract returning
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAbstractReturn(VM.AbstractReturn command, C context);
 
-    void visitReturn(VM.Return vmReturn, C c) throws Exception;
+    /**
+     * Visits the void returning
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitReturn(VM.Return command, C context);
 
-    void visitIReturn(VM.IReturn iReturn, C c) throws Exception;
+    /**
+     * Visits the integer returning
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIReturn(VM.IReturn command, C context);
 
-    void visitAReturn(VM.AReturn aReturn, C c) throws Exception;
+    /**
+     * Visits the reference returning
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitAReturn(VM.AReturn command, C context);
 
-    void visitGoto(VM.Goto vmGoto, C c) throws Exception;
+    /**
+     * Visits the unconditional jump
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitGoto(VM.Goto command, C context);
 
-    void visitIfTrue(VM.IfTrue ifTrue, C c) throws Exception;
+    /**
+     * Visits the positive conditional jump
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIfTrue(VM.IfTrue command, C context);
 
-    void visitIfFalse(VM.IfFalse ifFalse, C c) throws Exception;
+    /**
+     * Visits the negative conditional jump
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitIfFalse(VM.IfFalse command, C context);
 
-    void visitNewArray(VM.NewArray newArray, C c) throws Exception;
+    /**
+     * Visits the array creation
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitNewArray(VM.NewArray command, C context);
 
-    void visitUnknown(VM vm, C c) throws Exception;
+    /**
+     * Visits the unknown command
+     *
+     * @param command the command
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitUnknown(VM command, C context);
 }

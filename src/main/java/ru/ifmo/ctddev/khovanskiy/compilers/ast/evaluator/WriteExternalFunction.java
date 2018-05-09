@@ -1,5 +1,6 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator;
 
+import java.io.IOException;
 import java.io.Writer;
 
 public class WriteExternalFunction extends ExternalFunction {
@@ -10,14 +11,17 @@ public class WriteExternalFunction extends ExternalFunction {
     }
 
     @Override
-    public Object evaluate(Object... args) throws Exception {
+    public Object evaluate(Object... args) {
         assert args.length == 1;
         assert args[0] != null;
         Object arg = args[0] instanceof Character ? ((int) ((char) args[0])) : args[0];
         String str = arg + "\n";
-        System.out.print(str);
-        writer.write(str);
-        writer.flush();
-        return null;
+        try {
+            writer.write(str);
+            writer.flush();
+            return null;
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

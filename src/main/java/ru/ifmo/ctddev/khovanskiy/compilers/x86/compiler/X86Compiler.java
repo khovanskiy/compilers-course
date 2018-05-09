@@ -5,8 +5,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.Compiler;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ImplicationType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.*;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.*;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
@@ -18,10 +17,9 @@ import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
 @Slf4j
 public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements Compiler<VMProgram, X86Program> {
     @Override
-    public X86Program compile(VMProgram vmProgram) throws Exception {
+    public X86Program compile(VMProgram vmProgram) {
         final CompilerContext compilerContext = new CompilerContext();
         visitProgram(vmProgram, compilerContext);
-        verify(compilerContext);
         return new X86Program(compilerContext.getCommands());
     }
 
@@ -33,7 +31,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     private static final boolean GC = true;
 
     @Override
-    public void visitFunction(final VMFunction function, final CompilerContext compilerContext) throws Exception {
+    public void visitFunction(final VMFunction function, final CompilerContext compilerContext) {
         int maxVariableId = -1;
         for (VM command : function.getCommands()) {
             if (command instanceof VM.IStore) {
@@ -67,8 +65,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
             final ConcreteType type = function.getTypes().get(id);
             final StackPosition variable = compilerContext.registerVariable(id, type);
             if (isReferenceType(type)) {
-                // null reference by default
-//                compilerContext.addCommand(new X86.MovL(new Immediate(0), variable));
+                // init local variable with reference holder by default
                 compilerContext.wrapInvoke(scope -> {
                     scope.addCommand(new X86.Call("init_reference"));
                     scope.addCommand(new X86.MovL(Eax.INSTANCE, variable));
@@ -78,7 +75,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         super.visitFunction(function, compilerContext);
 
 //        compilerContext.addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
-        compilerContext.getScope().addCommand(new X86.Label(returnLabel(function.getName())));
+        compilerContext.getScope().addCommand(new X86.Label(getFunctionEndLabel(function.getName())));
 
         if (GC) {
             compilerContext.getScope().addCommand(new X86.PushL(Eax.INSTANCE));
@@ -108,7 +105,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.addCommand(new X86.Ret());
     }
 
-    protected String returnLabel(final String functionName) {
+    protected String getFunctionEndLabel(final String functionName) {
         return functionName + "_end";
     }
 
@@ -116,29 +113,17 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         return ImplicationType.class.isInstance(type);
     }
 
-    protected void verify(CompilerContext compilerContext) {
-        int count = 0;
-        for (X86 command : compilerContext.getCommands()) {
-            if (command instanceof X86.PushL) {
-                ++count;
-            } else if (command instanceof X86.PopL) {
-                --count;
-            }
-        }
-//        assert count == 0;
-    }
-
     @Override
-    public void visitIStore(VM.IStore iStore, CompilerContext compilerContext) {
+    public void visitIStore(VM.IStore command, CompilerContext compilerContext) {
         final MemoryAccess temporary = compilerContext.pop();
-        final MemoryAccess variable = compilerContext.get(iStore.getName());
+        final MemoryAccess variable = compilerContext.get(command.getName());
         compilerContext.getScope().move(temporary, variable);
     }
 
     @Override
-    public void visitAStore(VM.AStore aStore, CompilerContext compilerContext) {
+    public void visitAStore(VM.AStore command, CompilerContext compilerContext) {
         MemoryAccess temporary = compilerContext.pop();
-        final StackPosition variable = compilerContext.get(aStore.getName());
+        final StackPosition variable = compilerContext.get(command.getName());
 
         if (GC) {
             temporary = gcAssign(temporary, variable, compilerContext);
@@ -158,28 +143,28 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitDup(VM.Dup dup, CompilerContext compilerContext) {
+    public void visitDup(VM.Dup command, CompilerContext compilerContext) {
         compilerContext.dup();
     }
 
     @Override
-    public void visitIAStore(VM.IAStore iaStore, CompilerContext compilerContext) {
+    public void visitIAStore(VM.IAStore command, CompilerContext compilerContext) {
         final MemoryAccess value = compilerContext.pop();
         final MemoryAccess index = compilerContext.pop();
         final MemoryAccess array = compilerContext.pop();
 
         // reference
-        final MemoryAccess element = computeElementMemory(array, index, compilerContext);
+        final MemoryAccess element = computeElementMemory(array, index, IntegerType.INSTANCE, compilerContext);
         compilerContext.getScope().move(value, element);
     }
 
     @Override
-    public void visitAAStore(VM.AAStore aaStore, CompilerContext compilerContext) {
+    public void visitAAStore(VM.AAStore command, CompilerContext compilerContext) {
         MemoryAccess value = compilerContext.pop();
         final MemoryAccess index = compilerContext.pop();
         final MemoryAccess array = compilerContext.pop();
 
-        final StackPosition element = computeElementMemory(array, index, compilerContext);
+        final StackPosition element = computeElementMemory(array, index, ObjectType.INSTANCE, compilerContext);
 
         if (GC) {
             compilerContext.getScope().addCommand(new X86.PushL(element.getRegister()));
@@ -191,31 +176,43 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitILoad(VM.ILoad iLoad, CompilerContext compilerContext) {
-        final MemoryAccess variable = compilerContext.get(iLoad.getName());
-        final MemoryAccess temporary = compilerContext.allocate();
+    public void visitILoad(VM.ILoad command, CompilerContext compilerContext) {
+        final MemoryAccess variable = compilerContext.get(command.getName());
+        final MemoryAccess temporary = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(variable, temporary);
     }
 
     @Override
-    public void visitALoad(VM.ALoad aLoad, CompilerContext compilerContext) {
-        final MemoryAccess variable = compilerContext.get(aLoad.getName());
-        final MemoryAccess temporary = compilerContext.allocate();
+    public void visitALoad(VM.ALoad command, CompilerContext compilerContext) {
+        final MemoryAccess variable = compilerContext.get(command.getName());
+        final MemoryAccess temporary = compilerContext.allocate(ObjectType.INSTANCE);
         compilerContext.getScope().move(variable, temporary);
     }
 
     @Override
-    public void visitIALoad(VM.IALoad iaLoad, CompilerContext compilerContext) {
+    public void visitIALoad(VM.IALoad command, CompilerContext compilerContext) {
         final MemoryAccess index = compilerContext.pop();
         final MemoryAccess array = compilerContext.pop();
 
-        final MemoryAccess element = computeElementMemory(array, index, compilerContext);
+        final MemoryAccess element = computeElementMemory(array, index, IntegerType.INSTANCE, compilerContext);
 
-        final MemoryAccess temporary = compilerContext.allocate();
+        final MemoryAccess temporary = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(element, temporary);
     }
 
-    protected StackPosition computeElementMemory(MemoryAccess array, MemoryAccess index, CompilerContext compilerContext) {
+    /**
+     * Gets the element memory pointer and produces instruction to take it
+     *
+     * @param array           the reference to array
+     * @param index           the index of element
+     * @param elementType     the type of element
+     * @param compilerContext the compiler context
+     * @return the element memory pointer
+     * @since 1.0.0
+     */
+    protected StackPosition computeElementMemory(MemoryAccess array, MemoryAccess index, ConcreteType elementType, CompilerContext compilerContext) {
+        final int bytes = compilerContext.getSizeByType(elementType);
+
         // reference
         compilerContext.getScope().addCommand(new X86.MovL(array, Edx.INSTANCE));
         // reference->data
@@ -223,7 +220,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 
         // index
         compilerContext.getScope().addCommand(new X86.MovL(index, Eax.INSTANCE));
-        compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(4), Eax.INSTANCE));
+        compilerContext.getScope().addCommand(new X86.ImulL(new Immediate(bytes), Eax.INSTANCE));
 
         // reference->data[index]
         compilerContext.getScope().addCommand(new X86.AddL(Eax.INSTANCE, Edx.INSTANCE));
@@ -235,24 +232,24 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitAALoad(VM.AALoad aaLoad, CompilerContext compilerContext) {
+    public void visitAALoad(VM.AALoad command, CompilerContext compilerContext) {
         final MemoryAccess index = compilerContext.pop();
         final MemoryAccess array = compilerContext.pop();
 
-        final MemoryAccess element = computeElementMemory(array, index, compilerContext);
+        final MemoryAccess element = computeElementMemory(array, index, ObjectType.INSTANCE, compilerContext);
 
-        final MemoryAccess temporary = compilerContext.allocate();
+        final MemoryAccess temporary = compilerContext.allocate(ObjectType.INSTANCE);
         compilerContext.getScope().move(element, temporary);
     }
 
     @Override
-    public void visitLabel(VM.Label label, CompilerContext compilerContext) {
-        compilerContext.getScope().addCommand(new X86.Label(label.getName()));
+    public void visitLabel(VM.Label command, CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.Label(command.getName()));
     }
 
     @Override
-    public void visitBinOp(VM.BinOp binOp, CompilerContext compilerContext) {
-        switch (binOp.getOperator()) {
+    public void visitBinOp(VM.BinOp command, CompilerContext compilerContext) {
+        switch (command.getOperator()) {
             case "+":
                 visitIAdd(compilerContext);
                 break;
@@ -269,14 +266,14 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
                 visitIRem(compilerContext);
                 return;
             case "&&":
-                visitLogical(binOp, compilerContext);
+                visitLogical(command, compilerContext);
                 return;
             case "!!":
             case "||":
-                visitLogical(binOp, compilerContext);
+                visitLogical(command, compilerContext);
                 return;
             default:
-                visitCompare(binOp, compilerContext);
+                visitCompare(command, compilerContext);
         }
     }
 
@@ -285,7 +282,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.SubL(rhs, Eax.INSTANCE));
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
@@ -294,7 +291,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.AddL(rhs, Eax.INSTANCE));
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
@@ -303,7 +300,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.ImulL(rhs, Eax.INSTANCE));
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
@@ -313,7 +310,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.Cltd());
         compilerContext.getScope().addCommand(new X86.IDivL(rhs));
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
@@ -323,18 +320,25 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.Cltd());
         compilerContext.getScope().addCommand(new X86.IDivL(rhs));
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Edx.INSTANCE, result);
     }
 
-    private void visitCompare(VM.BinOp binOp, CompilerContext compilerContext) {
+    /**
+     * Visits the comparing
+     *
+     * @param command         the command
+     * @param compilerContext the compiler context
+     * @since 1.0.0
+     */
+    private void visitCompare(VM.BinOp command, CompilerContext compilerContext) {
         //Mov (y, eax); Binop ("^", edx, edx); Binop ("cmp", x, eax); Set (op, "%dl"); Mov (edx, s)
         MemoryAccess rhs = compilerContext.pop();
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().move(lhs, Eax.INSTANCE);
         compilerContext.getScope().addCommand(new X86.XorL(Edx.INSTANCE, Edx.INSTANCE));
         compilerContext.getScope().addCommand(new X86.Cmp(rhs, Eax.INSTANCE));
-        switch (binOp.getOperator()) {
+        switch (command.getOperator()) {
             case ">":
                 visitG(compilerContext);
                 break;
@@ -354,9 +358,9 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
                 visitNe(compilerContext);
                 break;
             default:
-                throw new UnsupportedOperationException(binOp.getOperator());
+                throw new UnsupportedOperationException(command.getOperator());
         }
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Edx.INSTANCE, result);
     }
 
@@ -384,7 +388,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.getScope().addCommand(new X86.SetNe(Dl.INSTANCE));
     }
 
-    private void visitLogical(VM.BinOp binOp, CompilerContext compilerContext) {
+    private void visitLogical(VM.BinOp command, CompilerContext compilerContext) {
         MemoryAccess rhs = compilerContext.pop();
         MemoryAccess lhs = compilerContext.pop();
         compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
@@ -394,7 +398,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
         compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), rhs));
         compilerContext.getScope().addCommand(new X86.SetNz(Al.INSTANCE));
 
-        switch (binOp.getOperator()) {
+        switch (command.getOperator()) {
             case "&&":
                 visitAnd(compilerContext);
                 break;
@@ -403,7 +407,7 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
                 visitOr(compilerContext);
                 break;
         }
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(IntegerType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
@@ -416,56 +420,56 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitAConstNull(VM.AConstNull aConstNull, CompilerContext compilerContext) {
-        final MemoryAccess temporary = compilerContext.allocate();
+    public void visitAConstNull(VM.AConstNull command, CompilerContext compilerContext) {
+        final MemoryAccess temporary = compilerContext.allocate(ObjectType.INSTANCE);
         compilerContext.getScope().move(new Immediate(0), temporary);
     }
 
     @Override
-    public void visitIConst(VM.IConst iConst, CompilerContext compilerContext) {
-        final MemoryAccess temporary = compilerContext.allocate();
-        compilerContext.getScope().move(new Immediate(iConst.getValue()), temporary);
+    public void visitIConst(VM.IConst command, CompilerContext compilerContext) {
+        final MemoryAccess temporary = compilerContext.allocate(IntegerType.INSTANCE);
+        compilerContext.getScope().move(new Immediate(command.getValue()), temporary);
     }
 
     @Override
-    public void visitInvokeStatic(VM.InvokeStatic call, CompilerContext compilerContext) {
-        assert call.getArgumentsCount() <= compilerContext.getStack().size();
+    public void visitInvokeStatic(VM.InvokeStatic command, CompilerContext compilerContext) {
+        assert command.getArgumentsCount() <= compilerContext.getStack().size();
 
         compilerContext.wrapInvoke(scope -> {
-            for (int i = 0; i < call.getArgumentsCount(); ++i) {
+            for (int i = 0; i < command.getArgumentsCount(); ++i) {
                 MemoryAccess memoryAccess = compilerContext.pop();
                 scope.addCommand(new X86.PushL(memoryAccess));
             }
-            scope.addCommand(new X86.Call(call.getName()));
-            scope.addCommand(new X86.AddL(new Immediate(4 * call.getArgumentsCount()), Esp.INSTANCE));
+            scope.addCommand(new X86.Call(command.getName()));
+            scope.addCommand(new X86.AddL(new Immediate(4 * command.getArgumentsCount()), Esp.INSTANCE));
         });
 
-
-        if (!call.getName().equals("write")) { // todo: if returns void type
-            final MemoryAccess temporary = compilerContext.allocate();
+        final ConcreteType returnType = command.getReturnType();
+        if (!VoidType.INSTANCE.equals(returnType)) {
+            final MemoryAccess temporary = compilerContext.allocate(returnType);
             compilerContext.getScope().move(Eax.INSTANCE, temporary);
         }
     }
 
     @Override
-    public void visitAbstractReturn(VM.AbstractReturn command, CompilerContext compilerContext) throws Exception {
+    public void visitAbstractReturn(VM.AbstractReturn command, CompilerContext compilerContext) {
         super.visitAbstractReturn(command, compilerContext);
-        compilerContext.getScope().addCommand(new X86.Jmp(returnLabel(compilerContext.getScope().getName())));
+        compilerContext.getScope().addCommand(new X86.Jmp(getFunctionEndLabel(compilerContext.getScope().getName())));
     }
 
     @Override
-    public void visitReturn(VM.Return vmReturn, CompilerContext compilerContext) {
+    public void visitReturn(VM.Return command, CompilerContext compilerContext) {
         compilerContext.getScope().addCommand(new X86.XorL(Eax.INSTANCE, Eax.INSTANCE));
     }
 
     @Override
-    public void visitIReturn(VM.IReturn iReturn, CompilerContext compilerContext) {
+    public void visitIReturn(VM.IReturn command, CompilerContext compilerContext) {
         final MemoryAccess temporary = compilerContext.pop();
         compilerContext.getScope().move(temporary, Eax.INSTANCE);
     }
 
     @Override
-    public void visitAReturn(VM.AReturn aReturn, CompilerContext compilerContext) {
+    public void visitAReturn(VM.AReturn command, CompilerContext compilerContext) {
         final MemoryAccess temporary = compilerContext.pop();
         compilerContext.getScope().move(temporary, Eax.INSTANCE);
         gcReturn(Eax.INSTANCE, compilerContext);
@@ -480,26 +484,26 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
     }
 
     @Override
-    public void visitGoto(VM.Goto vmGoto, CompilerContext compilerContext) {
-        compilerContext.getScope().addCommand(new X86.Jmp(vmGoto.getLabel()));
+    public void visitGoto(VM.Goto command, CompilerContext compilerContext) {
+        compilerContext.getScope().addCommand(new X86.Jmp(command.getLabel()));
     }
 
     @Override
-    public void visitIfTrue(VM.IfTrue ifTrue, CompilerContext compilerContext) {
+    public void visitIfTrue(VM.IfTrue command, CompilerContext compilerContext) {
         final MemoryAccess memoryAccess = compilerContext.pop();
         compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), memoryAccess));
-        compilerContext.getScope().addCommand(new X86.Jnz(ifTrue.getLabel()));
+        compilerContext.getScope().addCommand(new X86.Jnz(command.getLabel()));
     }
 
     @Override
-    public void visitIfFalse(VM.IfFalse ifFalse, CompilerContext compilerContext) {
+    public void visitIfFalse(VM.IfFalse command, CompilerContext compilerContext) {
         final MemoryAccess memoryAccess = compilerContext.pop();
         compilerContext.getScope().addCommand(new X86.Cmp(new Immediate(0), memoryAccess));
-        compilerContext.getScope().addCommand(new X86.Jz(ifFalse.getLabel()));
+        compilerContext.getScope().addCommand(new X86.Jz(command.getLabel()));
     }
 
     @Override
-    public void visitNewArray(VM.NewArray newArray, CompilerContext compilerContext) {
+    public void visitNewArray(VM.NewArray command, CompilerContext compilerContext) {
 //        compilerContext.dup();
         MemoryAccess sizeMemory = compilerContext.pop();
 
@@ -518,12 +522,12 @@ public class X86Compiler extends AbstractVMVisitor<CompilerContext> implements C
 //        compilerContext.getScope().addCommand(new X86.MovL(new StackPosition(REFERENCE_DATA_OFFSET, Edx.INSTANCE), Edx.INSTANCE));
 //        compilerContext.getScope().move(Edx.INSTANCE, new StackPosition(0, Edx.INSTANCE));
 
-        final MemoryAccess result = compilerContext.allocate();
+        final MemoryAccess result = compilerContext.allocate(ObjectType.INSTANCE);
         compilerContext.getScope().move(Eax.INSTANCE, result);
     }
 
     @Override
-    public void visitUnknown(VM vm, CompilerContext compilerContext) {
+    public void visitUnknown(VM command, CompilerContext compilerContext) {
         throw new UnsupportedOperationException();
     }
 }

@@ -176,7 +176,7 @@ public class X86Printer extends AbstractX86Visitor<X86PrinterContext> {
 
 //    private void visitSet(String suffix, Register8 register8, X86PrinterContext context) throws Exception {
 //        context.append("\tset" + suffix + " ");
-//        visitMemoryAccess(register8, context);
+//        visitMemoryAccessForRead(register8, context);
 //        context.append("\n");
 //    }
 

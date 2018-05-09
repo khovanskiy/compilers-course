@@ -2,21 +2,28 @@ package ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 
+/**
+ * Abstract syntax tree visitor with default pattern matching
+ *
+ * @param <C> the type of context
+ * @author Victor Khovanskiy
+ * @since 1.0.0
+ */
 public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     @Override
-    public void visitCompilationUnit(AST.CompilationUnit compilationUnit, C c) throws Exception {
+    public void visitCompilationUnit(AST.CompilationUnit compilationUnit, C c) {
         visitCompoundStatement(compilationUnit.getCompoundStatement(), c);
     }
 
     @Override
-    public void visitCompoundStatement(AST.CompoundStatement compoundStatement, C c) throws Exception {
+    public void visitCompoundStatement(AST.CompoundStatement compoundStatement, C c) {
         for (AST.SingleStatement singleStatement : compoundStatement.getStatements()) {
             visitSingleStatement(singleStatement, c);
         }
     }
 
     @Override
-    public void visitSingleStatement(AST.SingleStatement singleStatement, C c) throws Exception {
+    public void visitSingleStatement(AST.SingleStatement singleStatement, C c) {
         if (singleStatement instanceof AST.Declaration) {
             visitDeclaration((AST.Declaration) singleStatement, c);
             return;
@@ -45,7 +52,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitDeclaration(AST.Declaration declaration, C c) throws Exception {
+    public void visitDeclaration(AST.Declaration declaration, C c) {
         if (declaration instanceof AST.FunctionDefinition) {
             visitFunctionDefinition((AST.FunctionDefinition) declaration, c);
             return;
@@ -58,12 +65,12 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitExpressionStatement(AST.ExpressionStatement expressionStatement, C c) throws Exception {
+    public void visitExpressionStatement(AST.ExpressionStatement expressionStatement, C c) {
         visitExpression(expressionStatement.getExpression(), c);
     }
 
     @Override
-    public void visitSelectionStatement(AST.SelectionStatement selectionStatement, C c) throws Exception {
+    public void visitSelectionStatement(AST.SelectionStatement selectionStatement, C c) {
         if (selectionStatement instanceof AST.IfStatement) {
             visitIfStatement((AST.IfStatement) selectionStatement, c);
             return;
@@ -72,7 +79,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitJumpStatement(AST.JumpStatement jumpStatement, C c) throws Exception {
+    public void visitJumpStatement(AST.JumpStatement jumpStatement, C c) {
         if (jumpStatement instanceof AST.GotoStatement) {
             visitGotoStatement((AST.GotoStatement) jumpStatement, c);
             return;
@@ -101,7 +108,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitIterationStatement(AST.IterationStatement iterationStatement, C c) throws Exception {
+    public void visitIterationStatement(AST.IterationStatement iterationStatement, C c) {
         if (iterationStatement instanceof AST.WhileStatement) {
             visitWhileStatement((AST.WhileStatement) iterationStatement, c);
             return;
@@ -118,7 +125,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitExpression(AST.Expression expression, C c) throws Exception {
+    public void visitExpression(AST.Expression expression, C c) {
         if (expression instanceof AST.FunctionCall) {
             visitFunctionCall((AST.FunctionCall) expression, c);
             return;
@@ -128,7 +135,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
             return;
         }
         if (expression instanceof AST.MemoryAccessExpression) {
-            visitMemoryAccess((AST.MemoryAccessExpression) expression, c);
+            visitMemoryAccessForRead((AST.MemoryAccessExpression) expression, c);
             return;
         }
         if (expression instanceof AST.Literal) {
@@ -147,20 +154,20 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitMemoryAccess(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception {
+    public void visitMemoryAccessForRead(AST.MemoryAccessExpression memoryAccessExpression, C c) {
         if (memoryAccessExpression instanceof AST.VariableAccessExpression) {
-            visitVariableAccess((AST.VariableAccessExpression) memoryAccessExpression, c);
+            visitVariableAccessForRead((AST.VariableAccessExpression) memoryAccessExpression, c);
             return;
         }
         if (memoryAccessExpression instanceof AST.ArrayAccessExpression) {
-            visitArrayAccess((AST.ArrayAccessExpression) memoryAccessExpression, c);
+            visitArrayAccessForRead((AST.ArrayAccessExpression) memoryAccessExpression, c);
             return;
         }
         throw new IllegalStateException("Unknown memory access type: " + memoryAccessExpression.getClass());
     }
 
     @Override
-    public void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception {
+    public void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C c) {
         if (memoryAccessExpression instanceof AST.VariableAccessExpression) {
             visitVariableAccessForWrite((AST.VariableAccessExpression) memoryAccessExpression, c);
             return;
@@ -173,7 +180,7 @@ public abstract class AbstractASTVisitor<C> implements ASTVisitor<C> {
     }
 
     @Override
-    public void visitLiteral(AST.Literal literal, C c) throws Exception {
+    public void visitLiteral(AST.Literal literal, C c) {
         if (literal instanceof AST.IntegerLiteral) {
             visitIntegerLiteral((AST.IntegerLiteral) literal, c);
             return;

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * @since 1.0.0
  */
 public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
-    public void evaluate(final VMProgram vmProgram, final Map<Pointer, Symbol> symbols) throws Exception {
+    public void evaluate(final VMProgram vmProgram, final Map<Pointer, Symbol> symbols) {
         final List<VMFunction> functions = vmProgram.getFunctions();
         final Map<String, Position> labels = new HashMap<>();
         for (final VMFunction function : functions) {
@@ -45,7 +45,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitProgram(VMProgram vmProgram, EvaluatorContext context) throws Exception {
+    public void visitProgram(VMProgram vmProgram, EvaluatorContext context) {
 
         Map<String, VMFunction> vmFunctionMap = vmProgram.getFunctions().stream()
                 .collect(Collectors.toMap(VMFunction::getName, Function.identity(), (u, v) -> {
@@ -68,21 +68,21 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitDup(VM.Dup dup, EvaluatorContext context) {
+    public void visitDup(VM.Dup command, EvaluatorContext context) {
         context.getStack().push(context.getStack().peek());
     }
 
     @Override
-    public void visitIStore(VM.IStore store, EvaluatorContext context) throws Exception {
-        final VariablePointer pointer = new VariablePointer(getVariableName(store.getName()));
+    public void visitIStore(VM.IStore command, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(command.getName()));
         final Symbol<Object> symbol = context.getStack().pop();
         assert Integer.class.isInstance(symbol.getValue());
         context.put(pointer, symbol);
     }
 
     @Override
-    public void visitAStore(VM.AStore store, EvaluatorContext context) {
-        final VariablePointer pointer = new VariablePointer(getVariableName(store.getName()));
+    public void visitAStore(VM.AStore command, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(command.getName()));
         final Symbol<Object> symbol = context.getStack().pop();
         assert List.class.isInstance(symbol.getValue());
         context.put(pointer, symbol);
@@ -94,7 +94,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void visitIAStore(VM.IAStore iaStore, EvaluatorContext context) {
+    public void visitIAStore(VM.IAStore command, EvaluatorContext context) {
         final Symbol<Object> valueSymbol = context.getStack().pop();
         final Symbol<Object> indexSymbol = context.getStack().pop();
         final Symbol<Object> arraySymbol = context.getStack().pop();
@@ -108,7 +108,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void visitAAStore(VM.AAStore aaStore, EvaluatorContext context) {
+    public void visitAAStore(VM.AAStore command, EvaluatorContext context) {
         final Symbol<Object> valueSymbol = context.getStack().pop();
         final Symbol<Object> indexSymbol = context.getStack().pop();
         final Symbol<Object> arraySymbol = context.getStack().pop();
@@ -121,29 +121,29 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitILoad(VM.ILoad load, EvaluatorContext context) {
-        final VariablePointer pointer = new VariablePointer(getVariableName(load.getName()));
+    public void visitILoad(VM.ILoad command, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(command.getName()));
         final Symbol<Object> symbol = context.get(pointer, Object.class);
         if (symbol == null) {
-            throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
+            throw new IllegalStateException(String.format("Variable \"%s\" is not found", command.getName()));
         }
         assert Integer.class.isInstance(symbol.getValue());
         context.getStack().add(symbol);
     }
 
     @Override
-    public void visitALoad(VM.ALoad load, EvaluatorContext context) {
-        final VariablePointer pointer = new VariablePointer(getVariableName(load.getName()));
+    public void visitALoad(VM.ALoad command, EvaluatorContext context) {
+        final VariablePointer pointer = new VariablePointer(getVariableName(command.getName()));
         final Symbol<Object> symbol = context.get(pointer, Object.class);
         if (symbol == null) {
-            throw new IllegalStateException(String.format("Variable \"%s\" is not found", load.getName()));
+            throw new IllegalStateException(String.format("Variable \"%s\" is not found", command.getName()));
         }
         assert List.class.isInstance(symbol.getValue());
         context.getStack().add(symbol);
     }
 
     @Override
-    public void visitIALoad(VM.IALoad iaLoad, EvaluatorContext context) {
+    public void visitIALoad(VM.IALoad command, EvaluatorContext context) {
         final Symbol<Object> indexSymbol = context.getStack().pop();
         final Symbol<Object> arraySymbol = context.getStack().pop();
         assert List.class.isInstance(arraySymbol.getValue());
@@ -157,7 +157,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitAALoad(VM.AALoad aaLoad, EvaluatorContext context) {
+    public void visitAALoad(VM.AALoad command, EvaluatorContext context) {
         final Symbol<Object> indexSymbol = context.getStack().pop();
         final Symbol<Object> arraySymbol = context.getStack().pop();
         assert List.class.isInstance(arraySymbol.getValue());
@@ -171,38 +171,38 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitLabel(VM.Label label, EvaluatorContext context) {
+    public void visitLabel(VM.Label command, EvaluatorContext context) {
         // do nothing
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public void visitBinOp(VM.BinOp binOp, EvaluatorContext context) {
+    public void visitBinOp(VM.BinOp command, EvaluatorContext context) {
         assert context.getStack().size() >= 2 : "Stack does not have 2 values at least: " + Objects.toString(context.getStack());
         final Symbol<Object> second = context.getStack().pop();
         final Symbol<Object> first = context.getStack().pop();
-        final Object value = ASTEvaluator.evaluateBinaryExpression(binOp.getOperator(), first.getValue(), second.getValue());
+        final Object value = ASTEvaluator.evaluateBinaryExpression(command.getOperator(), first.getValue(), second.getValue());
         context.getStack().push(new Symbol<>(value));
     }
 
     @Override
-    public void visitAConstNull(VM.AConstNull aConstNull, EvaluatorContext context) {
+    public void visitAConstNull(VM.AConstNull command, EvaluatorContext context) {
         context.getStack().push(new Symbol<>(new NullPointer()));
     }
 
     @Override
-    public void visitIConst(VM.IConst iConst, EvaluatorContext context) {
-        context.getStack().push(new Symbol<>(iConst.getValue()));
+    public void visitIConst(VM.IConst command, EvaluatorContext context) {
+        context.getStack().push(new Symbol<>(command.getValue()));
     }
 
     @Override
-    public void visitInvokeStatic(VM.InvokeStatic call, EvaluatorContext context) throws Exception {
-        final Symbol<ExternalFunction> function = context.get(new FunctionPointer(call.getName()), ExternalFunction.class);
+    public void visitInvokeStatic(VM.InvokeStatic command, EvaluatorContext context) {
+        final Symbol<ExternalFunction> function = context.get(new FunctionPointer(command.getName()), ExternalFunction.class);
         if (function != null) {
-            final Object[] args = new Object[call.getArgumentsCount()];
-            for (int i = call.getArgumentsCount() - 1; i >= 0; --i) {
+            final Object[] args = new Object[command.getArgumentsCount()];
+            for (int i = command.getArgumentsCount() - 1; i >= 0; --i) {
                 if (context.getStack().isEmpty()) {
-                    throw new IllegalStateException(String.format("Missing argument for function \"%s\" external invoke", call.getName()));
+                    throw new IllegalStateException(String.format("Missing argument for function \"%s\" external invoke", command.getName()));
                 }
                 args[i] = context.getStack().pop().getValue();
             }
@@ -215,22 +215,22 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
             final Position position = context.getPosition();
             final Position nextPosition = new Position(position.getFunctionName(), position.getLineNumber() + 1);
             EvaluatorContext.Scope scope = new EvaluatorContext.Scope();
-            List<String> names = new ArrayList<>(call.getArgumentsCount());
-            for (int i = 0; i < call.getArgumentsCount(); ++i) {
+            List<String> names = new ArrayList<>(command.getArgumentsCount());
+            for (int i = 0; i < command.getArgumentsCount(); ++i) {
                 names.add(getVariableName(scope.nextName()));
             }
-            for (int i = call.getArgumentsCount() - 1; i >= 0; --i) {
+            for (int i = command.getArgumentsCount() - 1; i >= 0; --i) {
                 final Symbol symbol = context.getStack().pop();
                 scope.getData().put(new VariablePointer(names.get(i)), symbol);
             }
             context.getScopes().push(scope);
             context.getCallStack().push(nextPosition);
-            context.gotoLabel(call.getName());
+            context.gotoLabel(command.getName());
         }
     }
 
     @Override
-    public void visitReturn(VM.Return vmReturn, EvaluatorContext context) {
+    public void visitReturn(VM.Return command, EvaluatorContext context) {
         context.getScopes().pop();
         final Position position = context.getCallStack().pop();
         context.setPosition(position);
@@ -238,7 +238,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void visitIReturn(VM.IReturn iReturn, EvaluatorContext context) {
+    public void visitIReturn(VM.IReturn command, EvaluatorContext context) {
         context.getScopes().pop();
         Symbol<Integer> value = context.getStack().pop();
         final Position position = context.getCallStack().pop();
@@ -248,7 +248,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void visitAReturn(VM.AReturn aReturn, EvaluatorContext context) {
+    public void visitAReturn(VM.AReturn command, EvaluatorContext context) {
         context.getScopes().pop();
         Symbol<Object> value = context.getStack().pop();
         final Position position = context.getCallStack().pop();
@@ -257,28 +257,28 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitGoto(VM.Goto vmGoto, EvaluatorContext context) {
-        context.gotoLabel(vmGoto.getLabel());
+    public void visitGoto(VM.Goto command, EvaluatorContext context) {
+        context.gotoLabel(command.getLabel());
     }
 
     @Override
-    public void visitIfTrue(VM.IfTrue ifTrue, EvaluatorContext context) {
+    public void visitIfTrue(VM.IfTrue command, EvaluatorContext context) {
         Symbol<Integer> value = context.getStack().pop();
         if (value.getValue() != 0) {
-            context.gotoLabel(ifTrue.getLabel());
+            context.gotoLabel(command.getLabel());
         }
     }
 
     @Override
-    public void visitIfFalse(VM.IfFalse ifFalse, EvaluatorContext context) {
+    public void visitIfFalse(VM.IfFalse command, EvaluatorContext context) {
         Symbol<Integer> value = context.getStack().pop();
         if (value.getValue() == 0) {
-            context.gotoLabel(ifFalse.getLabel());
+            context.gotoLabel(command.getLabel());
         }
     }
 
     @Override
-    public void visitNewArray(VM.NewArray newArray, EvaluatorContext context) {
+    public void visitNewArray(VM.NewArray command, EvaluatorContext context) {
         Symbol<Integer> size = context.getStack().pop();
         List<Object> array = new ArrayList<>(size.getValue());
         for (int i = 0; i < size.getValue(); ++i) {
@@ -288,7 +288,7 @@ public class VMEvaluator extends AbstractVMVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitUnknown(VM vm, EvaluatorContext context) {
-        throw new UnsupportedOperationException(vm.toString());
+    public void visitUnknown(VM command, EvaluatorContext context) {
+        throw new UnsupportedOperationException(command.toString());
     }
 }

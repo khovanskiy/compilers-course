@@ -3,6 +3,7 @@ package ru.ifmo.ctddev.khovanskiy.compilers.vm;
 import lombok.Getter;
 import lombok.ToString;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator.NullPointer;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 
 public abstract class VM {
     @Getter
@@ -154,10 +155,12 @@ public abstract class VM {
     public static class InvokeStatic extends AbstractInvoke {
         private final String name;
         private final int argumentsCount;
+        private final ConcreteType returnType;
 
-        public InvokeStatic(final String name, final int argumentsCount) {
+        public InvokeStatic(final String name, final int argumentsCount, ConcreteType returnType) {
             this.name = name;
             this.argumentsCount = argumentsCount;
+            this.returnType = returnType;
         }
     }
 

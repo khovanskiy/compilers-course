@@ -8,6 +8,7 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.TypeVariable;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
 
 /**
@@ -35,7 +36,7 @@ class TypeInferenceContext {
         return this.scopes.peek();
     }
 
-    public void wrapFunction(final String name, final ExceptionConsumer<Scope> consumer) throws Exception {
+    public void wrapFunction(final String name, final Consumer<Scope> consumer) {
         final Scope scope = getScopeByName(name);
         scopes.push(scope);
         consumer.accept(scope);

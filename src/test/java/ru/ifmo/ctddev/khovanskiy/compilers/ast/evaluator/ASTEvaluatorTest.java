@@ -5,7 +5,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.ASTPrinter;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.PrinterContext;
+import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.ASTPrinterContext;
 
 import java.io.PrintWriter;
 import java.io.Reader;
@@ -41,7 +41,7 @@ public class ASTEvaluatorTest extends BaseTest {
         runTests(s, "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
+            printer.visitCompilationUnit(testCase.getAst(), new ASTPrinterContext(consoleWriter));
 
             final Map<Pointer, Symbol> externals = defineExternalFunctions(testCase.getReader(), testCase.getWriter());
             final EvaluatorContext context = new EvaluatorContext(externals);

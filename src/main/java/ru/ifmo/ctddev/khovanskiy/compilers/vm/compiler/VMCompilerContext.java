@@ -5,17 +5,22 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.RenameHolder;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VM;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
-import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.ExceptionConsumer;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.TypeContext;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
 
 import java.util.List;
 import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 
-
+/**
+ * The virtual machine compiler context
+ *
+ * @author Victor Khovanskiy
+ * @since 1.0.0
+ */
 @Getter
-public class CompilerContext {
+public class VMCompilerContext {
     private final TypeContext typeContext;
 
     private final VMProgram vmProgram = new VMProgram();
@@ -26,11 +31,19 @@ public class CompilerContext {
 
     private final Stack<Loop> loops = new Stack<>();
 
-    public CompilerContext(final TypeContext typeContext) {
+    public VMCompilerContext(final TypeContext typeContext) {
         this.typeContext = typeContext;
     }
 
-    public Scope wrapFunction(final String name, final ExceptionConsumer<Scope> consumer) throws Exception {
+    /**
+     * Wraps the function body in new scope and compiles function in it
+     *
+     * @param name     the function name
+     * @param consumer the scope consumer
+     * @return the new scope
+     * @since 1.0.0
+     */
+    public Scope wrapFunction(final String name, final Consumer<Scope> consumer) {
         Scope scope = new Scope(name);
         scopes.push(scope);
         consumer.accept(scope);
@@ -38,12 +51,17 @@ public class CompilerContext {
         return scope;
     }
 
-    public Loop wrapLoop(final String loopLabel, final String endLabel, final ExceptionConsumer<Loop> consumer) throws Exception {
-        Loop loop = new Loop(loopLabel, endLabel);
+    /**
+     * @param startLabel the label of the loop start
+     * @param endLabel   the label of the loop end
+     * @param consumer   the loop consumer
+     * @since 1.0.0
+     */
+    public void wrapLoop(final String startLabel, final String endLabel, final Consumer<Loop> consumer) {
+        final Loop loop = new Loop(startLabel, endLabel);
         loops.push(loop);
         consumer.accept(loop);
-        loop = loops.pop();
-        return loop;
+        loops.pop();
     }
 
     public void addCommand(final VM command) {

@@ -12,23 +12,22 @@ import java.util.List;
  */
 public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     @Override
-    public void visitProgram(VMProgram vmProgram, C c) throws Exception {
-        for (VMFunction function : vmProgram.getFunctions()) {
+    public void visitProgram(VMProgram vmProgram, C c) {
+        for (final VMFunction function : vmProgram.getFunctions()) {
             visitFunction(function, c);
         }
     }
 
     @Override
-    public void visitFunction(VMFunction function, C c) throws Exception {
-        List<VM> commands = function.getCommands();
-        for (int i = 0; i < commands.size(); ++i) {
-            VM command = commands.get(i);
+    public void visitFunction(VMFunction function, C c) {
+        final List<VM> commands = function.getCommands();
+        for (final VM command : commands) {
             visitCommand(command, c);
         }
     }
 
     @Override
-    public void visitCommand(VM vm, C c) throws Exception {
+    public void visitCommand(VM vm, C c) {
         if (vm instanceof VM.Comment) {
             visitComment((VM.Comment) vm, c);
             return;
@@ -85,53 +84,54 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     }
 
     @Override
-    public void visitComment(VM.Comment comment, C c) throws Exception {
+    public void visitComment(VM.Comment comment, C c) {
+        // do nothing
     }
 
     @Override
-    public void visitStore(VM.Store store, C c) throws Exception {
-        if (store instanceof VM.IStore) {
-            visitIStore((VM.IStore) store, c);
+    public void visitStore(VM.Store command, C c) {
+        if (command instanceof VM.IStore) {
+            visitIStore((VM.IStore) command, c);
             return;
         }
-        if (store instanceof VM.AStore) {
-            visitAStore((VM.AStore) store, c);
+        if (command instanceof VM.AStore) {
+            visitAStore((VM.AStore) command, c);
             return;
         }
-        if (store instanceof VM.IAStore) {
-            visitIAStore((VM.IAStore) store, c);
+        if (command instanceof VM.IAStore) {
+            visitIAStore((VM.IAStore) command, c);
             return;
         }
-        if (store instanceof VM.AAStore) {
-            visitAAStore((VM.AAStore) store, c);
+        if (command instanceof VM.AAStore) {
+            visitAAStore((VM.AAStore) command, c);
             return;
         }
         throw new IllegalStateException();
     }
 
     @Override
-    public void visitLoad(VM.Load load, C c) throws Exception {
-        if (load instanceof VM.ILoad) {
-            visitILoad((VM.ILoad) load, c);
+    public void visitLoad(VM.Load command, C c) {
+        if (command instanceof VM.ILoad) {
+            visitILoad((VM.ILoad) command, c);
             return;
         }
-        if (load instanceof VM.ALoad) {
-            visitALoad((VM.ALoad) load, c);
+        if (command instanceof VM.ALoad) {
+            visitALoad((VM.ALoad) command, c);
             return;
         }
-        if (load instanceof VM.IALoad) {
-            visitIALoad((VM.IALoad) load, c);
+        if (command instanceof VM.IALoad) {
+            visitIALoad((VM.IALoad) command, c);
             return;
         }
-        if (load instanceof VM.AALoad) {
-            visitAALoad((VM.AALoad) load, c);
+        if (command instanceof VM.AALoad) {
+            visitAALoad((VM.AALoad) command, c);
             return;
         }
         throw new IllegalStateException();
     }
 
     @Override
-    public void visitConst(VM.Const command, C c) throws Exception {
+    public void visitConst(VM.Const command, C c) {
         if (command instanceof VM.IConst) {
             visitIConst((VM.IConst) command, c);
             return;
@@ -144,7 +144,7 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     }
 
     @Override
-    public void visitAConst(VM.AConst command, C c) throws Exception {
+    public void visitAConst(VM.AConst command, C c) {
         if (command instanceof VM.AConstNull) {
             visitAConstNull((VM.AConstNull) command, c);
             return;
@@ -153,7 +153,7 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     }
 
     @Override
-    public void visitAbstractInvoke(VM.AbstractInvoke command, C c) throws Exception {
+    public void visitAbstractInvoke(VM.AbstractInvoke command, C c) {
         if (command instanceof VM.InvokeStatic) {
             visitInvokeStatic((VM.InvokeStatic) command, c);
             return;
@@ -162,7 +162,7 @@ public abstract class AbstractVMVisitor<C> implements VMVisitor<C> {
     }
 
     @Override
-    public void visitAbstractReturn(VM.AbstractReturn command, C c) throws Exception {
+    public void visitAbstractReturn(VM.AbstractReturn command, C c) {
         if (command instanceof VM.Return) {
             visitReturn((VM.Return) command, c);
             return;

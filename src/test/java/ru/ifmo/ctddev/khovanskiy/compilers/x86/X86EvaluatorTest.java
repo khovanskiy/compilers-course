@@ -19,7 +19,7 @@ import java.io.*;
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
-public class EvaluatorTest extends BaseTest {
+public class X86EvaluatorTest extends BaseTest {
     private final SystemService systemService = new SystemService();
 
     @Test

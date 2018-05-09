@@ -5,20 +5,19 @@ import org.junit.Ignore;
 import org.junit.Test;
 import ru.ifmo.ctddev.khovanskiy.compilers.BaseTest;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.ASTPrinter;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.PrinterContext;
 
 import java.io.PrintWriter;
 import java.io.Writer;
 
 @Slf4j
-public class ParserTest extends BaseTest {
+public class ASTPrinterTest extends BaseTest {
     @Test
     @Ignore
     public void testCore() {
         runTests("./compiler-tests/core", "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
+            printer.print(testCase.getAst(), consoleWriter);
         });
     }
 
@@ -28,7 +27,7 @@ public class ParserTest extends BaseTest {
         runTests("./compiler-tests/deep-expressions", "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
+            printer.print(testCase.getAst(), consoleWriter);
         });
     }
 
@@ -38,7 +37,7 @@ public class ParserTest extends BaseTest {
         runTests("./compiler-tests/expressions", "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
+            printer.print(testCase.getAst(), consoleWriter);
         });
     }
 
@@ -48,7 +47,7 @@ public class ParserTest extends BaseTest {
         runTests("./compiler-tests/performance", "./target/temp", (testCase) -> {
             final ASTPrinter printer = new ASTPrinter();
             final Writer consoleWriter = new PrintWriter(System.out);
-            printer.visitCompilationUnit(testCase.getAst(), new PrinterContext(consoleWriter));
+            printer.print(testCase.getAst(), consoleWriter);
         });
     }
 }

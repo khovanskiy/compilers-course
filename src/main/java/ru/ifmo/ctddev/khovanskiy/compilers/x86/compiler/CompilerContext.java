@@ -3,12 +3,13 @@ package ru.ifmo.ctddev.khovanskiy.compilers.x86.compiler;
 import lombok.Getter;
 import lombok.Setter;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ConcreteType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.IntegerType;
+import ru.ifmo.ctddev.khovanskiy.compilers.vm.inference.type.ObjectType;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.Immediate;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.MemoryAccess;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.StackPosition;
 import ru.ifmo.ctddev.khovanskiy.compilers.x86.X86;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Eax;
-import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.Register;
+import ru.ifmo.ctddev.khovanskiy.compilers.x86.register.*;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -25,10 +26,10 @@ public class CompilerContext {
     private final Stack<MemoryAccess> stack = new Stack<>();
 
     public CompilerContext() {
-//        registers.add(new RegisterEntry(Ebx.INSTANCE));
-//        registers.add(new RegisterEntry(Ecx.INSTANCE));
-//        registers.add(new RegisterEntry(Edi.INSTANCE));
-//        registers.add(new RegisterEntry(Esi.INSTANCE));
+        registers.add(new RegisterEntry(Ebx.INSTANCE));
+        registers.add(new RegisterEntry(Ecx.INSTANCE));
+        registers.add(new RegisterEntry(Edi.INSTANCE));
+        registers.add(new RegisterEntry(Esi.INSTANCE));
     }
 
     public void enterScope(String name) {
@@ -59,9 +60,9 @@ public class CompilerContext {
     }
 
     /**
-     * https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
-     *  @param id   the variable ID
+     * @param id   the variable ID
      * @param type the variable type
+     * @link https://stackoverflow.com/questions/24173899/writing-to-stack-as-local-variable-in-start-function-x86-asm
      */
     public StackPosition registerVariable(int id, final ConcreteType type) {
         final Scope scope = getScope();
@@ -94,9 +95,10 @@ public class CompilerContext {
     /**
      * Allocate temporary variable
      *
+     * @param type the type of allocated memory
      * @return the memory pointer for temporary variable
      */
-    public MemoryAccess allocate() {
+    public MemoryAccess allocate(ConcreteType type) {
         for (final RegisterEntry entry : registers) {
             if (entry.getUsageCount() > 0) {
                 continue;
@@ -171,6 +173,23 @@ public class CompilerContext {
         return variable.getStackPosition();
     }
 
+    /**
+     * Gets size in bytes by type
+     *
+     * @param type the type
+     * @return the size in bytes
+     * @since 1.1.0
+     */
+    public int getSizeByType(ConcreteType type) {
+        if (IntegerType.INSTANCE.equals(type)) {
+            return 4;
+        } else if (ObjectType.INSTANCE.equals(type)) {
+            return 4;
+        } else {
+            throw new IllegalArgumentException("Unknown size of type: " + type);
+        }
+    }
+
     @Getter
     @Setter
     public static class RegisterEntry {
@@ -217,9 +236,6 @@ public class CompilerContext {
             } else if (Immediate.class.isInstance(source)) {
                 addCommand(new X86.MovL(source, destination));
             } else {
-//                assert source instanceof StackPosition;
-//                assert destination instanceof StackPosition;
-
                 addCommand(new X86.MovL(source, Eax.INSTANCE));
                 addCommand(new X86.MovL(Eax.INSTANCE, destination));
             }

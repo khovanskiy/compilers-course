@@ -15,14 +15,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
-    public TypeContext inference(final AST.CompilationUnit compilationUnit) throws Exception {
+    public TypeContext inference(final AST.CompilationUnit compilationUnit) {
         final TypeInferenceContext inferenceContext = new TypeInferenceContext();
         visitCompilationUnit(compilationUnit, inferenceContext);
         return inferenceContext.getTypeContext();
     }
 
     @Override
-    public void visitCompilationUnit(final AST.CompilationUnit compilationUnit, final TypeInferenceContext context) throws Exception {
+    public void visitCompilationUnit(final AST.CompilationUnit compilationUnit, final TypeInferenceContext context) {
         final List<AST.SingleStatement> statements = compilationUnit.getCompoundStatement().getStatements();
         final List<AST.FunctionDefinition> functions = statements.stream()
                 .filter(AST.FunctionDefinition.class::isInstance)
@@ -42,7 +42,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final TypeInferenceContext context) throws Exception {
+    public void visitFunctionDefinition(final AST.FunctionDefinition functionDefinition, final TypeInferenceContext context) {
         context.wrapFunction(functionDefinition.getName(), scope -> {
             for (final AST.VariableDefinition variableDefinition : functionDefinition.getVariables()) {
                 visitVariableDefinition(variableDefinition, context);
@@ -52,7 +52,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final TypeInferenceContext context) throws Exception {
+    public void visitVariableDefinition(final AST.VariableDefinition variableDefinition, final TypeInferenceContext context) {
         final String name = variableDefinition.getName();
         final int id = context.getScope().getVariableId(name);
         if (log.isDebugEnabled()) {
@@ -61,7 +61,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitAssignmentStatement(final AST.AssignmentStatement assignmentStatement, final TypeInferenceContext context) throws Exception {
+    public void visitAssignmentStatement(final AST.AssignmentStatement assignmentStatement, final TypeInferenceContext context) {
         if (assignmentStatement.getMemoryAccess() instanceof AST.VariableAccessExpression) {
             final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) assignmentStatement.getMemoryAccess();
             final String name = variableAccessExpression.getName();
@@ -73,39 +73,47 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
         }
         if (assignmentStatement.getMemoryAccess() instanceof AST.ArrayAccessExpression) {
             final AST.ArrayAccessExpression arrayAccessExpression = (AST.ArrayAccessExpression) assignmentStatement.getMemoryAccess();
-//            visitMemoryAccess(arrayAccessExpression.getPointer(), context);
-//            final Type arrayType = context.getScope().popType();
             visitExpression(arrayAccessExpression.getExpression(), context);
             final Type indexType = context.getScope().popType();
             visitExpression(assignmentStatement.getExpression(), context);
             final Type rvalueType = context.getScope().popType();
-            final Type arrayType = buildArrayType(assignmentStatement.getMemoryAccess(), rvalueType, context);
-//            context.addTypeRelation(arrayType, ArrayType.of(rvalueType));
+            if (log.isDebugEnabled()) {
+                final Type arrayType = buildArrayType(assignmentStatement.getMemoryAccess(), rvalueType, context);
+                log.debug("Array Type: " + arrayType);
+            }
             context.addTypeRelation(indexType, IntegerType.INSTANCE);
             return;
         }
         throw new IllegalStateException();
     }
 
-    public Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type callback, TypeInferenceContext context) throws Exception {
+    /**
+     * Builds the type of array with given element type
+     *
+     * @param memoryAccess the memory access
+     * @param type         the element type
+     * @param context      the type inference context
+     * @return the built type of array
+     */
+    private Type buildArrayType(AST.MemoryAccessExpression memoryAccess, Type type, TypeInferenceContext context) {
         if (memoryAccess instanceof AST.VariableAccessExpression) {
             final AST.VariableAccessExpression variableAccessExpression = (AST.VariableAccessExpression) memoryAccess;
             final String name = variableAccessExpression.getName();
             final int id = context.getScope().getVariableId(name);
-            context.getScope().setVariableType(id, callback);
-            return (Type) callback;
+            context.getScope().setVariableType(id, type);
+            return type;
         }
         if (memoryAccess instanceof AST.ArrayAccessExpression) {
             visitExpression(((AST.ArrayAccessExpression) memoryAccess).getExpression(), context);
             final Type indexType = context.getScope().popType();
             context.addTypeRelation(indexType, IntegerType.INSTANCE);
-            return buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), ImplicationType.of(ArrayType.INSTANCE, callback), context);
+            return buildArrayType(((AST.ArrayAccessExpression) memoryAccess).getPointer(), ImplicationType.of(ArrayType.INSTANCE, type), context);
         }
         throw new IllegalStateException();
     }
 
     @Override
-    public void visitIfStatement(final AST.IfStatement ifStatement, final TypeInferenceContext context) throws Exception {
+    public void visitIfStatement(final AST.IfStatement ifStatement, final TypeInferenceContext context) {
         final List<AST.IfCase> cases = ifStatement.getCases();
         for (int i = 0; i < cases.size(); ++i) {
             final AST.IfCase ifCase = cases.get(i);
@@ -122,7 +130,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final TypeInferenceContext context) throws Exception {
+    public void visitGotoStatement(final AST.GotoStatement gotoStatement, final TypeInferenceContext context) {
         // do nothing
     }
 
@@ -132,17 +140,17 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final TypeInferenceContext context) throws Exception {
+    public void visitContinueStatement(final AST.ContinueStatement continueStatement, final TypeInferenceContext context) {
         // do nothing
     }
 
     @Override
-    public void visitBreakStatement(final AST.BreakStatement breakStatement, final TypeInferenceContext context) throws Exception {
+    public void visitBreakStatement(final AST.BreakStatement breakStatement, final TypeInferenceContext context) {
         // do nothing
     }
 
     @Override
-    public void visitReturnStatement(final AST.ReturnStatement returnStatement, final TypeInferenceContext context) throws Exception {
+    public void visitReturnStatement(final AST.ReturnStatement returnStatement, final TypeInferenceContext context) {
         if (returnStatement.getExpression() != null) {
             visitExpression(returnStatement.getExpression(), context);
             final Type returnType = context.getScope().popType();
@@ -153,24 +161,24 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitSkipStatement(final AST.SkipStatement skipStatement, final TypeInferenceContext context) throws Exception {
+    public void visitSkipStatement(final AST.SkipStatement skipStatement, final TypeInferenceContext context) {
         // do nothing
     }
 
     @Override
-    public void visitWhileStatement(final AST.WhileStatement whileStatement, final TypeInferenceContext context) throws Exception {
+    public void visitWhileStatement(final AST.WhileStatement whileStatement, final TypeInferenceContext context) {
         visitExpression(whileStatement.getCondition(), context);
         visitCompoundStatement(whileStatement.getCompoundStatement(), context);
     }
 
     @Override
-    public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final TypeInferenceContext context) throws Exception {
+    public void visitRepeatStatement(final AST.RepeatStatement repeatStatement, final TypeInferenceContext context) {
         visitExpression(repeatStatement.getCondition(), context);
         visitCompoundStatement(repeatStatement.getCompoundStatement(), context);
     }
 
     @Override
-    public void visitForStatement(final AST.ForStatement forStatement, final TypeInferenceContext context) throws Exception {
+    public void visitForStatement(final AST.ForStatement forStatement, final TypeInferenceContext context) {
         if (forStatement.getInit() != null) {
             visitAssignmentStatement(forStatement.getInit(), context);
         }
@@ -184,7 +192,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitFunctionCall(final AST.FunctionCall functionCall, final TypeInferenceContext context) throws Exception {
+    public void visitFunctionCall(final AST.FunctionCall functionCall, final TypeInferenceContext context) {
         final TypeInferenceContext.Scope functionScope = context.getScopeByName(functionCall.getName());
         final List<AST.Expression> arguments = functionCall.getArguments();
         for (int i = 0; i < arguments.size(); ++i) {
@@ -198,7 +206,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final TypeInferenceContext context) throws Exception {
+    public void visitArrayCreation(final AST.ArrayCreationExpression arrayCreationExpression, final TypeInferenceContext context) {
         Type elementType = null;
         for (final AST.Expression expression : arrayCreationExpression.getArguments()) {
             visitExpression(expression, context);
@@ -216,7 +224,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitVariableAccess(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) throws Exception {
+    public void visitVariableAccessForRead(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) {
         final String name = variableAccessExpression.getName();
         final int id = context.getScope().getVariableId(name);
         final Type variableType = context.getScope().getVariableType(id);
@@ -224,56 +232,53 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
     }
 
     @Override
-    public void visitArrayAccess(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) throws Exception {
-        visitMemoryAccess(arrayAccessExpression.getPointer(), context);
+    public void visitArrayAccessForRead(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) {
+        visitMemoryAccessForRead(arrayAccessExpression.getPointer(), context);
         final Type arrayType = context.getScope().popType();
         visitExpression(arrayAccessExpression.getExpression(), context);
         final Type indexType = context.getScope().popType();
-//        assert type instanceof ArrayType;
-//        final Type elementType = ((ArrayType) type).getElementType();
-//        context.getScope().pushType(elementType);
         context.addTypeRelation(indexType, IntegerType.INSTANCE);
         final Type elementType = context.getScope().createTypeVariable();
         context.getScope().pushType(ApplicationType.of(arrayType, elementType));
     }
 
     @Override
-    public void visitVariableAccessForWrite(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) throws Exception {
+    public void visitVariableAccessForWrite(final AST.VariableAccessExpression variableAccessExpression, final TypeInferenceContext context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitArrayAccessForWrite(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) throws Exception {
+    public void visitArrayAccessForWrite(final AST.ArrayAccessExpression arrayAccessExpression, final TypeInferenceContext context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final TypeInferenceContext context) throws Exception {
+    public void visitIntegerLiteral(final AST.IntegerLiteral integerLiteral, final TypeInferenceContext context) {
         context.getScope().pushType(IntegerType.INSTANCE);
     }
 
     @Override
-    public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final TypeInferenceContext context) throws Exception {
+    public void visitCharacterLiteral(final AST.CharacterLiteral characterLiteral, final TypeInferenceContext context) {
         context.getScope().pushType(CharacterType.INSTANCE);
     }
 
     @Override
-    public void visitStringLiteral(final AST.StringLiteral stringLiteral, final TypeInferenceContext context) throws Exception {
+    public void visitStringLiteral(final AST.StringLiteral stringLiteral, final TypeInferenceContext context) {
         context.getScope().pushType(ImplicationType.of(ArrayType.INSTANCE, CharacterType.INSTANCE));
     }
 
     @Override
-    public void visitNullLiteral(final AST.NullLiteral nullLiteral, final TypeInferenceContext context) throws Exception {
+    public void visitNullLiteral(final AST.NullLiteral nullLiteral, final TypeInferenceContext context) {
         context.getScope().pushType(context.getScope().createTypeVariable());
     }
 
     @Override
-    public void visitUnaryExpression(final AST.UnaryExpression unaryExpression, final TypeInferenceContext context) throws Exception {
+    public void visitUnaryExpression(final AST.UnaryExpression unaryExpression, final TypeInferenceContext context) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitBinaryExpression(final AST.BinaryExpression binaryExpression, final TypeInferenceContext context) throws Exception {
+    public void visitBinaryExpression(final AST.BinaryExpression binaryExpression, final TypeInferenceContext context) {
         visitExpression(binaryExpression.getLeft(), context);
         final Type leftType = context.getScope().popType();
         visitExpression(binaryExpression.getRight(), context);
@@ -291,7 +296,7 @@ public class TypeInferencer extends AbstractASTVisitor<TypeInferenceContext> {
         context.getScope().pushType(resultType);
     }
 
-    private void initExternalFunctions(final TypeInferenceContext context) throws Exception {
+    private void initExternalFunctions(final TypeInferenceContext context) {
         context.wrapFunction("read", scope -> {
             scope.setReturnType(IntegerType.INSTANCE);
         });

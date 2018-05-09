@@ -24,7 +24,7 @@ import java.util.Map;
  * @since 1.0.0
  */
 @Slf4j
-public class EvaluatorTest extends BaseTest {
+public class VMEvaluatorTest extends BaseTest {
     @Test
     public void testCore() {
         evaluate("./compiler-tests/core");

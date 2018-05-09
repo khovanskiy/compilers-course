@@ -15,22 +15,34 @@ public class PrinterContext {
         this.writer = writer;
     }
 
-    public PrinterContext append(String s) throws IOException {
-        this.writer.append(s);
-        return this;
+    public PrinterContext append(String s) {
+        try {
+            this.writer.append(s);
+            return this;
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public PrinterContext printLine(String s) throws IOException {
-        this.writer.write(lineNumber + ":\t" + s + "\n");
-        ++lineNumber;
-        return this;
+    public PrinterContext printLine(String s) {
+        try {
+            this.writer.write(lineNumber + ":\t" + s + "\n");
+            ++lineNumber;
+            return this;
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void setLineNumber(int lineNumber) {
         this.lineNumber = lineNumber;
     }
 
-    public void flush() throws IOException {
-        this.writer.flush();
+    public void flush() {
+        try {
+            this.writer.flush();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

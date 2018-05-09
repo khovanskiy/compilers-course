@@ -2,78 +2,338 @@ package ru.ifmo.ctddev.khovanskiy.compilers.ast.visitor;
 
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 
+/**
+ * Abstract syntax tree visitor
+ *
+ * @param <C> the type of context
+ * @author Victor Khovanskiy
+ * @since 1.0.0
+ */
 public interface ASTVisitor<C> {
-    void visitCompilationUnit(AST.CompilationUnit compilationUnit, C c) throws Exception;
+    /**
+     * Visits the root of program
+     *
+     * @param compilationUnit the root of program
+     * @param context         the context
+     * @since 1.0.0
+     */
+    void visitCompilationUnit(AST.CompilationUnit compilationUnit, C context);
 
-    void visitCompoundStatement(AST.CompoundStatement compoundStatement, C c) throws Exception;
+    /**
+     * Visits the compound statement
+     *
+     * @param compoundStatement the compound statement
+     * @since 1.0.0
+     */
+    void visitCompoundStatement(AST.CompoundStatement compoundStatement, C context);
 
-    void visitSingleStatement(AST.SingleStatement singleStatement, C c) throws Exception;
+    /**
+     * Visits the abstract single statement
+     *
+     * @param singleStatement the single statement
+     * @param context         the context
+     * @since 1.0.0
+     */
+    void visitSingleStatement(AST.SingleStatement singleStatement, C context);
 
-    void visitDeclaration(AST.Declaration declaration, C c) throws Exception;
+    /**
+     * Visits the abstract declaration
+     *
+     * @param declaration the declaration
+     * @param context     the context
+     * @since 1.0.0
+     */
+    void visitDeclaration(AST.Declaration declaration, C context);
 
-    void visitFunctionDefinition(AST.FunctionDefinition functionDefinition, C c) throws Exception;
+    /**
+     * Visits the function definition
+     *
+     * @param functionDefinition the function definition
+     * @param context            the context
+     * @since 1.0.0
+     */
+    void visitFunctionDefinition(AST.FunctionDefinition functionDefinition, C context);
 
-    void visitVariableDefinition(AST.VariableDefinition variableDefinition, C c) throws Exception;
+    /**
+     * Visits the variable definition
+     *
+     * @param variableDefinition the variable definition
+     * @param context            the context
+     * @since 1.0.0
+     */
+    void visitVariableDefinition(AST.VariableDefinition variableDefinition, C context);
 
-    void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, C c) throws Exception;
+    /**
+     * Visits the assignment statement
+     *
+     * @param assignmentStatement the assignment statement
+     * @param context             the context
+     * @since 1.0.0
+     */
+    void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, C context);
 
-    void visitExpressionStatement(AST.ExpressionStatement expressionStatement, C c) throws Exception;
+    /**
+     * Visits the expression statement
+     *
+     * @param expressionStatement the expression statement
+     * @param context             the context
+     * @since 1.0.0
+     */
+    void visitExpressionStatement(AST.ExpressionStatement expressionStatement, C context);
 
-    void visitSelectionStatement(AST.SelectionStatement selectionStatement, C c) throws Exception;
+    /**
+     * Visits the abstract selection statement
+     *
+     * @param selectionStatement the selection statement
+     * @param context            the context
+     * @since 1.0.0
+     */
+    void visitSelectionStatement(AST.SelectionStatement selectionStatement, C context);
 
-    void visitIfStatement(AST.IfStatement ifStatement, C c) throws Exception;
+    /**
+     * Visits the "if" statement
+     *
+     * @param ifStatement the "if" statement
+     * @param context     the context
+     * @since 1.0.0
+     */
+    void visitIfStatement(AST.IfStatement ifStatement, C context);
 
-    void visitJumpStatement(AST.JumpStatement jumpStatement, C c) throws Exception;
+    /**
+     * Visits the abstract jump statement
+     *
+     * @param jumpStatement the jump statement
+     * @param context       the context
+     * @since 1.0.0
+     */
+    void visitJumpStatement(AST.JumpStatement jumpStatement, C context);
 
-    void visitGotoStatement(AST.GotoStatement gotoStatement, C c) throws Exception;
+    /**
+     * Visits the unconditional "goto" jump
+     *
+     * @param gotoStatement the "goto" statement
+     * @param context       the context
+     * @since 1.0.0
+     */
+    void visitGotoStatement(AST.GotoStatement gotoStatement, C context);
 
-    void visitLabelStatement(AST.LabelStatement labelStatement, C c) throws Exception;
+    /**
+     * Visits the "label" statement
+     *
+     * @param labelStatement the "label" statement
+     * @since 1.0.0
+     */
+    void visitLabelStatement(AST.LabelStatement labelStatement, C context);
 
-    void visitContinueStatement(AST.ContinueStatement continueStatement, C c) throws Exception;
+    /**
+     * Visits the "continue" statement
+     *
+     * @param continueStatement the "continue" statement
+     * @since 1.0.0
+     */
+    void visitContinueStatement(AST.ContinueStatement continueStatement, C context);
 
-    void visitBreakStatement(AST.BreakStatement breakStatement, C c) throws Exception;
+    /**
+     * Visits the "break" statement
+     *
+     * @param breakStatement the "break" statement
+     * @since 1.0.0
+     */
+    void visitBreakStatement(AST.BreakStatement breakStatement, C context);
 
-    void visitReturnStatement(AST.ReturnStatement returnStatement, C c) throws Exception;
+    /**
+     * Visits the "return" statement
+     *
+     * @param returnStatement the "return" statement
+     * @param context         the context
+     * @since 1.0.0
+     */
+    void visitReturnStatement(AST.ReturnStatement returnStatement, C context);
 
-    void visitSkipStatement(AST.SkipStatement skipStatement, C c) throws Exception;
+    /**
+     * Visits the "skip" statement
+     *
+     * @param skipStatement the "skip" statement
+     * @param context       the context
+     * @since 1.0.0
+     */
+    void visitSkipStatement(AST.SkipStatement skipStatement, C context);
 
-    void visitIterationStatement(AST.IterationStatement iterationStatement, C c) throws Exception;
+    /**
+     * Visits the abstract iteration statement
+     *
+     * @param iterationStatement the iteration statement
+     * @param context            the context
+     * @since 1.0.0
+     */
+    void visitIterationStatement(AST.IterationStatement iterationStatement, C context);
 
-    void visitWhileStatement(AST.WhileStatement whileStatement, C c) throws Exception;
+    /**
+     * Visits the "while" statement
+     *
+     * @param whileStatement the "while" statement
+     * @param context        the context
+     * @since 1.0.0
+     */
+    void visitWhileStatement(AST.WhileStatement whileStatement, C context);
 
-    void visitRepeatStatement(AST.RepeatStatement repeatStatement, C c) throws Exception;
+    /**
+     * Visits the "repeat" statement
+     *
+     * @param repeatStatement the "repeat" statement
+     * @param context         the context
+     * @since 1.0.0
+     */
+    void visitRepeatStatement(AST.RepeatStatement repeatStatement, C context);
 
-    void visitForStatement(AST.ForStatement forStatement, C c) throws Exception;
+    /**
+     * Visits the "for" statement
+     *
+     * @param forStatement the "for" statement
+     * @param context      the context
+     * @since 1.0.0
+     */
+    void visitForStatement(AST.ForStatement forStatement, C context);
 
-    void visitExpression(AST.Expression expression, C c) throws Exception;
+    /**
+     * Visits the abstract expression
+     *
+     * @param expression the expression
+     * @param context    the context
+     * @since 1.0.0
+     */
+    void visitExpression(AST.Expression expression, C context);
 
-    void visitFunctionCall(AST.FunctionCall functionCall, C c) throws Exception;
+    /**
+     * Visits the function call expression
+     *
+     * @param functionCall the function call expression
+     * @param context      the context
+     * @since 1.0.0
+     */
+    void visitFunctionCall(AST.FunctionCall functionCall, C context);
 
-    void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, C c) throws Exception;
+    /**
+     * @param arrayCreationExpression the array creation expression
+     * @param context                 the context
+     * @since 1.0.0
+     */
+    void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, C context);
 
-    void visitMemoryAccess(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception;
+    /**
+     * Visits the abstract memory access expression for read
+     *
+     * @param memoryAccessExpression the memory access expression
+     * @param context                the context
+     * @since 1.0.0
+     */
+    void visitMemoryAccessForRead(AST.MemoryAccessExpression memoryAccessExpression, C context);
 
-    void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, C c) throws Exception;
+    /**
+     * Visits the variable access expression for read
+     *
+     * @param variableAccessExpression the variable access expression
+     * @param context                  the context
+     * @since 1.0.0
+     */
+    void visitVariableAccessForRead(AST.VariableAccessExpression variableAccessExpression, C context);
 
-    void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, C c) throws Exception;
+    /**
+     * Visits the array access expression for read
+     *
+     * @param arrayAccessExpression the array access expression
+     * @param context               the context
+     * @since 1.0.0
+     */
+    void visitArrayAccessForRead(AST.ArrayAccessExpression arrayAccessExpression, C context);
 
-    void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C c) throws Exception;
+    /**
+     * Visits the abstract memory access expression for write
+     *
+     * @param memoryAccessExpression the memory access expression
+     * @param context                the context
+     * @since 1.0.0
+     */
+    void visitMemoryAccessForWrite(AST.MemoryAccessExpression memoryAccessExpression, C context);
 
-    void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, C c) throws Exception;
+    /**
+     * Visits the variable access expression for write
+     *
+     * @param variableAccessExpression the variable access expression
+     * @param context                  the context
+     * @since 1.0.0
+     */
+    void visitVariableAccessForWrite(AST.VariableAccessExpression variableAccessExpression, C context);
 
-    void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, C c) throws Exception;
+    /**
+     * Visits the array access expression for write
+     *
+     * @param arrayAccessExpression the array access expression
+     * @param context               the context
+     * @since 1.0.0
+     */
+    void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, C context);
 
-    void visitLiteral(AST.Literal literal, C c) throws Exception;
+    /**
+     * Visits the abstract literal
+     *
+     * @param literal the literal
+     * @param context the context
+     * @since 1.0.0
+     */
+    void visitLiteral(AST.Literal literal, C context);
 
-    void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, C c) throws Exception;
+    /**
+     * Visits the integer literal
+     *
+     * @param integerLiteral the integer literal
+     * @param context        the context
+     * @since 1.0.0
+     */
+    void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, C context);
 
-    void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, C c) throws Exception;
+    /**
+     * Visits the character literal
+     *
+     * @param characterLiteral the character literal
+     * @param context          the context
+     * @since 1.0.0
+     */
+    void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, C context);
 
-    void visitStringLiteral(AST.StringLiteral stringLiteral, C c) throws Exception;
+    /**
+     * Visits the string literal
+     *
+     * @param stringLiteral the string literal
+     * @param context       the context
+     * @since 1.0.0
+     */
+    void visitStringLiteral(AST.StringLiteral stringLiteral, C context);
 
-    void visitNullLiteral(AST.NullLiteral nullLiteral, C c) throws Exception;
+    /**
+     * Visits the null reference literal
+     *
+     * @param nullLiteral the null reference literal
+     * @param context     the context
+     * @since 1.0.0
+     */
+    void visitNullLiteral(AST.NullLiteral nullLiteral, C context);
 
-    void visitUnaryExpression(AST.UnaryExpression unaryExpression, C c) throws Exception;
+    /**
+     * Visits the unary expression
+     *
+     * @param unaryExpression the unary expression
+     * @param context         the context
+     * @since 1.0.0
+     */
+    void visitUnaryExpression(AST.UnaryExpression unaryExpression, C context);
 
-    void visitBinaryExpression(AST.BinaryExpression binaryExpression, C c) throws Exception;
+    /**
+     * Visits the binary expression
+     *
+     * @param binaryExpression the binary expression
+     * @param context          the context
+     * @since 1.0.0
+     */
+    void visitBinaryExpression(AST.BinaryExpression binaryExpression, C context);
 }

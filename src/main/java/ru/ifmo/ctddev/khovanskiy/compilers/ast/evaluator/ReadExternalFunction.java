@@ -1,5 +1,6 @@
 package ru.ifmo.ctddev.khovanskiy.compilers.ast.evaluator;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.Scanner;
@@ -14,9 +15,13 @@ public class ReadExternalFunction extends ExternalFunction {
     }
 
     @Override
-    public Object evaluate(Object... args) throws Exception {
+    public Object evaluate(Object... args) {
         assert args.length == 0;
-        writer.append("> ");
-        return scanner.nextInt();
+        try {
+            writer.append("> ");
+            return scanner.nextInt();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

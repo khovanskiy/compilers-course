@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
+ * Abstract syntax tree node
+ *
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
@@ -35,13 +37,12 @@ public abstract class AST {
 
     @Getter
     @ToString
-    public static class SingleStatement extends AST {
+    public static abstract class SingleStatement extends AST {
     }
 
     @Getter
     @ToString
     public static abstract class Declaration extends SingleStatement {
-
     }
 
     @Getter
@@ -90,15 +91,12 @@ public abstract class AST {
     }
 
     public static abstract class IterationStatement extends SingleStatement {
-
     }
 
     public static abstract class SelectionStatement extends SingleStatement {
-
     }
 
     public static abstract class JumpStatement extends SingleStatement {
-
     }
 
     @Getter
@@ -124,13 +122,11 @@ public abstract class AST {
     @Getter
     @ToString
     public static class ContinueStatement extends JumpStatement {
-
     }
 
     @Getter
     @ToString
     public static class BreakStatement extends JumpStatement {
-
     }
 
     @Getter
@@ -146,19 +142,11 @@ public abstract class AST {
     @Getter
     @ToString
     public static class SkipStatement extends JumpStatement {
-
     }
 
     @Getter
     @ToString
     public static class IfStatement extends SelectionStatement {
-        /*private final List<AST.Expression> conditions;
-        private final List<AST.CompoundStatement> compoundStatements;
-
-        public IfStatement(List<Expression> conditions, List<CompoundStatement> compoundStatements) {
-            this.conditions = conditions;
-            this.compoundStatements = compoundStatements;
-        }*/
         private final List<AST.IfCase> cases;
 
         public IfStatement(final List<IfCase> cases) {
@@ -335,7 +323,6 @@ public abstract class AST {
     }
 
     public static abstract class MemoryAccessExpression extends Expression {
-
     }
 
     @Getter

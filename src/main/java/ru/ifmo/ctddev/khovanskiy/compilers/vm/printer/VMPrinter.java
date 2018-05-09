@@ -5,15 +5,13 @@ import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMFunction;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.VMProgram;
 import ru.ifmo.ctddev.khovanskiy.compilers.vm.visitor.AbstractVMVisitor;
 
-import java.io.IOException;
-
 /**
  * @author Victor Khovanskiy
  * @since 1.0.0
  */
 public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     @Override
-    public void visitProgram(VMProgram vmProgram, PrinterContext context) throws Exception {
+    public void visitProgram(VMProgram vmProgram, PrinterContext context) {
         for (VMFunction function : vmProgram.getFunctions()) {
             visitFunction(function, context);
         }
@@ -21,7 +19,7 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     }
 
     @Override
-    public void visitFunction(VMFunction function, PrinterContext context) throws Exception {
+    public void visitFunction(VMFunction function, PrinterContext context) {
         context.append("begin " + function.getName() + "\n");
         context.setLineNumber(0);
         for (VM command : function.getCommands()) {
@@ -31,117 +29,117 @@ public class VMPrinter extends AbstractVMVisitor<PrinterContext> {
     }
 
     @Override
-    public void visitComment(VM.Comment comment, PrinterContext context) throws Exception {
+    public void visitComment(VM.Comment comment, PrinterContext context) {
         context.printLine("// " + comment.getText());
     }
 
     @Override
-    public void visitDup(VM.Dup dup, PrinterContext context) throws IOException {
+    public void visitDup(VM.Dup command, PrinterContext context) {
         context.printLine("dup");
     }
 
     @Override
-    public void visitIStore(VM.IStore store, PrinterContext context) throws IOException {
-        context.printLine("i_store v" + store.getName());
+    public void visitIStore(VM.IStore command, PrinterContext context) {
+        context.printLine("i_store v" + command.getName());
     }
 
     @Override
-    public void visitAStore(VM.AStore store, PrinterContext context) throws IOException {
-        context.printLine("a_store v" + store.getName());
+    public void visitAStore(VM.AStore command, PrinterContext context) {
+        context.printLine("a_store v" + command.getName());
     }
 
     @Override
-    public void visitIAStore(VM.IAStore iaStore, PrinterContext context) throws IOException {
+    public void visitIAStore(VM.IAStore command, PrinterContext context) {
         context.printLine("i_a_store");
     }
 
     @Override
-    public void visitAAStore(VM.AAStore aaStore, PrinterContext context) throws IOException {
+    public void visitAAStore(VM.AAStore command, PrinterContext context) {
         context.printLine("a_a_store");
     }
 
     @Override
-    public void visitILoad(VM.ILoad load, PrinterContext context) throws IOException {
-        context.printLine("i_load v" + load.getName());
+    public void visitILoad(VM.ILoad command, PrinterContext context) {
+        context.printLine("i_load v" + command.getName());
     }
 
     @Override
-    public void visitALoad(VM.ALoad load, PrinterContext context) throws IOException {
-        context.printLine("a_load v" + load.getName());
+    public void visitALoad(VM.ALoad command, PrinterContext context) {
+        context.printLine("a_load v" + command.getName());
     }
 
     @Override
-    public void visitIALoad(VM.IALoad iaLoad, PrinterContext context) throws IOException {
+    public void visitIALoad(VM.IALoad command, PrinterContext context) {
         context.printLine("i_a_load");
     }
 
     @Override
-    public void visitAALoad(VM.AALoad aaLoad, PrinterContext context) throws IOException {
+    public void visitAALoad(VM.AALoad command, PrinterContext context) {
         context.printLine("a_a_load");
     }
 
     @Override
-    public void visitLabel(VM.Label label, PrinterContext context) throws IOException {
-        context.printLine("label " + label.getName());
+    public void visitLabel(VM.Label command, PrinterContext context) {
+        context.printLine("label " + command.getName());
     }
 
     @Override
-    public void visitBinOp(VM.BinOp binOp, PrinterContext context) throws IOException {
-        context.printLine("BINOP " + binOp.getOperator());
+    public void visitBinOp(VM.BinOp command, PrinterContext context) {
+        context.printLine("bin_op " + command.getOperator());
     }
 
     @Override
-    public void visitAConstNull(VM.AConstNull aConstNull, PrinterContext context) throws IOException {
+    public void visitAConstNull(VM.AConstNull command, PrinterContext context) {
         context.printLine("a_const_null");
     }
 
     @Override
-    public void visitIConst(VM.IConst iConst, PrinterContext context) throws IOException {
-        context.printLine("i_const " + iConst.getValue());
+    public void visitIConst(VM.IConst command, PrinterContext context) {
+        context.printLine("i_const " + command.getValue());
     }
 
     @Override
-    public void visitInvokeStatic(VM.InvokeStatic invokeStatic, PrinterContext context) throws IOException {
-        context.printLine("invoke_static " + invokeStatic.getName() + "," + invokeStatic.getArgumentsCount());
+    public void visitInvokeStatic(VM.InvokeStatic command, PrinterContext context) {
+        context.printLine("invoke_static " + command.getName() + "," + command.getArgumentsCount());
     }
 
     @Override
-    public void visitReturn(VM.Return vmReturn, PrinterContext context) throws IOException {
+    public void visitReturn(VM.Return command, PrinterContext context) {
         context.printLine("return");
     }
 
     @Override
-    public void visitIReturn(VM.IReturn iReturn, PrinterContext context) throws IOException {
+    public void visitIReturn(VM.IReturn command, PrinterContext context) {
         context.printLine("i_return");
     }
 
     @Override
-    public void visitAReturn(VM.AReturn aReturn, PrinterContext context) throws IOException {
+    public void visitAReturn(VM.AReturn command, PrinterContext context) {
         context.printLine("a_return");
     }
 
     @Override
-    public void visitGoto(VM.Goto vmGoto, PrinterContext context) throws IOException {
-        context.printLine("goto " + vmGoto.getLabel());
+    public void visitGoto(VM.Goto command, PrinterContext context) {
+        context.printLine("goto " + command.getLabel());
     }
 
     @Override
-    public void visitIfTrue(VM.IfTrue ifTrue, PrinterContext context) throws IOException {
-        context.printLine("if_true " + ifTrue.getLabel());
+    public void visitIfTrue(VM.IfTrue command, PrinterContext context) {
+        context.printLine("if_true " + command.getLabel());
     }
 
     @Override
-    public void visitIfFalse(VM.IfFalse ifFalse, PrinterContext context) throws IOException {
-        context.printLine("if_false " + ifFalse.getLabel());
+    public void visitIfFalse(VM.IfFalse command, PrinterContext context) {
+        context.printLine("if_false " + command.getLabel());
     }
 
     @Override
-    public void visitNewArray(VM.NewArray newArray, PrinterContext context) throws IOException {
+    public void visitNewArray(VM.NewArray command, PrinterContext context) {
         context.printLine("new_array");
     }
 
     @Override
-    public void visitUnknown(VM vm, PrinterContext context) throws IOException {
-        context.printLine(vm.toString());
+    public void visitUnknown(VM command, PrinterContext context) {
+        context.printLine(command.toString());
     }
 }

@@ -8,7 +8,6 @@ import ru.ifmo.ctddev.khovanskiy.compilers.ast.AST;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageLexer;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.parser.LanguageParser;
 import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.ASTPrinter;
-import ru.ifmo.ctddev.khovanskiy.compilers.ast.printer.PrinterContext;
 
 import java.io.*;
 
@@ -52,7 +51,7 @@ public class Main {
     protected void runInterpreter(Reader reader, Writer writer) throws Exception {
         AST.CompilationUnit ast = parseAST(reader);
         ASTPrinter astPrinter = new ASTPrinter();
-        astPrinter.visitCompilationUnit(ast, new PrinterContext(writer));
+        astPrinter.print(ast, writer);
     }
 
     protected void showHelp(final Options options) {

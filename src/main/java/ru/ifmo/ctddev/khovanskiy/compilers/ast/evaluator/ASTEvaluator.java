@@ -10,7 +10,7 @@ import java.util.function.Function;
 
 public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     @Override
-    public void visitCompoundStatement(AST.CompoundStatement compoundStatement, EvaluatorContext context) throws Exception {
+    public void visitCompoundStatement(AST.CompoundStatement compoundStatement, EvaluatorContext context) {
         for (AST.SingleStatement singleStatement : compoundStatement.getStatements()) {
             visitSingleStatement(singleStatement, context);
             if (context.isShouldReturn()) {
@@ -101,7 +101,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
+    public void visitArrayAccessForWrite(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) {
         visitExpression(arrayAccessExpression.getExpression(), context);
         final int index = context.getResult(Integer.class).getValue();
         visitMemoryAccessForWrite(arrayAccessExpression.getPointer(), context);
@@ -109,32 +109,8 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
         context.setResult(new Symbol<>(new ArrayPointer(pointer, index)));
     }
 
-    private void setValue(Pointer pointer, Function<Symbol, Symbol> callback, EvaluatorContext context) {
-        if (pointer instanceof VariablePointer) {
-            context.update(pointer, oldSymbol -> {
-                final Symbol newSymbol = callback.apply(oldSymbol);
-                if (oldSymbol != null && newSymbol != null) {
-                    Class<?> oldClass = oldSymbol.getValue().getClass();
-                    Class<?> newClass = newSymbol.getValue().getClass();
-                    if (!oldClass.equals(newClass)) {
-                        throw new IllegalStateException(String.format("Types of \"%s\" are not equal: %s != %s", pointer, oldClass, newClass));
-                    }
-                }
-                return newSymbol;
-            });
-        } else if (pointer instanceof ArrayPointer) {
-            ArrayPointer pointer1 = ((ArrayPointer) pointer);
-            setValue(pointer1.getPointer(), oldSymbol -> {
-                final Symbol newSymbol = callback.apply(oldSymbol);
-                final List oldValue = List.class.cast(oldSymbol.getValue());
-                oldValue.set(pointer1.getIndex(), newSymbol.getValue());
-                return new Symbol<>(oldValue);
-            }, context);
-        }
-    }
-
     @Override
-    public void visitIfStatement(AST.IfStatement ifStatement, EvaluatorContext context) throws Exception {
+    public void visitIfStatement(AST.IfStatement ifStatement, EvaluatorContext context) {
         final List<AST.IfCase> cases = ifStatement.getCases();
         for (int i = 0; i < cases.size(); ++i) {
             final AST.IfCase ifCase = cases.get(i);
@@ -175,7 +151,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitReturnStatement(AST.ReturnStatement returnStatement, EvaluatorContext context) throws Exception {
+    public void visitReturnStatement(AST.ReturnStatement returnStatement, EvaluatorContext context) {
         visitExpression(returnStatement.getExpression(), context);
         context.setResult(context.getResult(Object.class));
         context.setShouldReturn(true);
@@ -187,7 +163,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitWhileStatement(AST.WhileStatement whileStatement, EvaluatorContext context) throws Exception {
+    public void visitWhileStatement(AST.WhileStatement whileStatement, EvaluatorContext context) {
         visitExpression(whileStatement.getCondition(), context);
         boolean loop = context.getResult(Integer.class).getValue() != 0;
         while (loop) {
@@ -198,7 +174,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitRepeatStatement(AST.RepeatStatement repeatStatement, EvaluatorContext context) throws Exception {
+    public void visitRepeatStatement(AST.RepeatStatement repeatStatement, EvaluatorContext context) {
         boolean loop;
         do {
             visitCompoundStatement(repeatStatement.getCompoundStatement(), context);
@@ -208,7 +184,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitForStatement(AST.ForStatement forStatement, EvaluatorContext context) throws Exception {
+    public void visitForStatement(AST.ForStatement forStatement, EvaluatorContext context) {
         if (forStatement.getInit() != null) {
             visitAssignmentStatement(forStatement.getInit(), context);
         }
@@ -230,7 +206,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitFunctionCall(AST.FunctionCall functionCall, EvaluatorContext context) throws Exception {
+    public void visitFunctionCall(AST.FunctionCall functionCall, EvaluatorContext context) {
         final FunctionPointer pointer = new FunctionPointer(functionCall.getName());
         Symbol<MyFunction> symbol = context.get(pointer, MyFunction.class);
         if (symbol == null) {
@@ -270,7 +246,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, EvaluatorContext context) throws Exception {
+    public void visitArrayCreation(AST.ArrayCreationExpression arrayCreationExpression, EvaluatorContext context) {
         List<Object> arr = new ArrayList<>(arrayCreationExpression.getArguments().size());
         for (int i = 0; i < arrayCreationExpression.getArguments().size(); ++i) {
             visitExpression(arrayCreationExpression.getArguments().get(i), context);
@@ -280,7 +256,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitVariableAccess(AST.VariableAccessExpression variableAccessExpression, EvaluatorContext evaluatorContext) {
+    public void visitVariableAccessForRead(AST.VariableAccessExpression variableAccessExpression, EvaluatorContext evaluatorContext) {
         // right-value case
         final VariablePointer pointer = new VariablePointer(variableAccessExpression.getName());
         final Symbol symbol = evaluatorContext.get(pointer, Object.class);
@@ -288,27 +264,14 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitArrayAccess(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) throws Exception {
+    public void visitArrayAccessForRead(AST.ArrayAccessExpression arrayAccessExpression, EvaluatorContext context) {
         // right-value case
         visitExpression(arrayAccessExpression.getExpression(), context);
         final int index = context.getResult(Integer.class).getValue();
-        visitMemoryAccess(arrayAccessExpression.getPointer(), context);
+        visitMemoryAccessForRead(arrayAccessExpression.getPointer(), context);
         final List array = context.getResult(List.class).getValue();
         context.setResult(new Symbol<>(array.get(index)));
     }
-
-//    public Symbol getValue(Pointer pointer, EvaluatorContext context) {
-//        if (pointer instanceof VariablePointer) {
-//            return context.get(pointer, Object.class);
-//        } else if (pointer instanceof ArrayPointer) {
-//            final ArrayPointer arrayPointer = (ArrayPointer) pointer;
-//            Symbol symbol = getValue(arrayPointer.getPosition(), context);
-//            int[] array = int[].class.cast(symbol.getValue());
-//            int index = arrayPointer.getIndex();
-//            return new Symbol<>(array[index]);
-//        }
-//        throw new IllegalStateException();
-//    }
 
     @Override
     public void visitIntegerLiteral(AST.IntegerLiteral integerLiteral, EvaluatorContext context) {
@@ -316,7 +279,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, EvaluatorContext context) throws Exception {
+    public void visitCharacterLiteral(AST.CharacterLiteral characterLiteral, EvaluatorContext context) {
         final char character = characterLiteral.getValue();
         context.setResult(new Symbol<>((int) character));
     }
@@ -333,17 +296,17 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitNullLiteral(AST.NullLiteral nullLiteral, EvaluatorContext context) throws Exception {
+    public void visitNullLiteral(AST.NullLiteral nullLiteral, EvaluatorContext context) {
         context.setResult(new Symbol<>(new NullPointer()));
     }
 
     @Override
-    public void visitUnaryExpression(AST.UnaryExpression unaryExpression, EvaluatorContext evaluatorContext) throws Exception {
-
+    public void visitUnaryExpression(AST.UnaryExpression unaryExpression, EvaluatorContext evaluatorContext) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
-    public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, EvaluatorContext context) throws Exception {
+    public void visitAssignmentStatement(AST.AssignmentStatement assignmentStatement, EvaluatorContext context) {
         AST.Expression expression = assignmentStatement.getExpression();
         visitExpression(expression, context);
         final Symbol newSymbol = context.getResult(Object.class);
@@ -364,7 +327,7 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
     }
 
     @Override
-    public void visitBinaryExpression(AST.BinaryExpression binaryExpression, EvaluatorContext context) throws Exception {
+    public void visitBinaryExpression(AST.BinaryExpression binaryExpression, EvaluatorContext context) {
         visitExpression(binaryExpression.getLeft(), context);
         final Object lo = context.getResult(Object.class).getValue();
         visitExpression(binaryExpression.getRight(), context);
@@ -374,5 +337,38 @@ public class ASTEvaluator extends AbstractASTVisitor<EvaluatorContext> {
         }
         int result = evaluateBinaryExpression(binaryExpression.getOperator(), lo, ro);
         context.setResult(new Symbol<>(result));
+    }
+
+    /**
+     * Sets recursively the value at the memory pointer
+     *
+     * @param pointer  the memory pointer
+     * @param callback the result callback
+     * @param context  the context
+     * @since 1.0.0
+     */
+    @SuppressWarnings("unchecked")
+    private void setValue(Pointer pointer, Function<Symbol, Symbol> callback, EvaluatorContext context) {
+        if (pointer instanceof VariablePointer) {
+            context.update(pointer, oldSymbol -> {
+                final Symbol newSymbol = callback.apply(oldSymbol);
+                if (oldSymbol != null && newSymbol != null) {
+                    Class<?> oldClass = oldSymbol.getValue().getClass();
+                    Class<?> newClass = newSymbol.getValue().getClass();
+                    if (!oldClass.equals(newClass)) {
+                        throw new IllegalStateException(String.format("Types of \"%s\" are not equal: %s != %s", pointer, oldClass, newClass));
+                    }
+                }
+                return newSymbol;
+            });
+        } else if (pointer instanceof ArrayPointer) {
+            ArrayPointer pointer1 = ((ArrayPointer) pointer);
+            setValue(pointer1.getPointer(), oldSymbol -> {
+                final Symbol newSymbol = callback.apply(oldSymbol);
+                final List oldValue = List.class.cast(oldSymbol.getValue());
+                oldValue.set(pointer1.getIndex(), newSymbol.getValue());
+                return new Symbol<>(oldValue);
+            }, context);
+        }
     }
 }
