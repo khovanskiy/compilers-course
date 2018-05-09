@@ -1,4 +1,6 @@
 *.iml
+runtime/*.s
+runtime/*.o
 gen/
 .idea/
 *.ipr
